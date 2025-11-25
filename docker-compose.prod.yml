@@ -2,7 +2,6 @@ services:
     # 1. Приложение (Laravel)
     laravel.test:
         build:
-            # ВАЖНО: Теперь берем Dockerfile из нашей папки, которая есть в Git
             context: ./docker/8.2
             dockerfile: Dockerfile
             args:
@@ -14,7 +13,6 @@ services:
             WWWUSER: 1000
             LARAVEL_SAIL: 1
             XDEBUG_MODE: 'off'
-            # === МАГИЯ ДОМЕНОВ ===
             VIRTUAL_HOST: ${APP_DOMAIN}
             LETSENCRYPT_HOST: ${APP_DOMAIN}
             LETSENCRYPT_EMAIL: ${App_EMAIL_ADMIN}
@@ -26,7 +24,7 @@ services:
             - pgsql
             - redis
 
-    # 2. База данных (PostgreSQL)
+    # 2. База данных
     pgsql:
         image: 'postgres:15'
         ports:
@@ -45,7 +43,7 @@ services:
             retries: 3
             timeout: 5s
 
-    # 3. Redis (Кэш и Очереди)
+    # 3. Redis
     redis:
         image: 'redis:alpine'
         ports:
@@ -62,11 +60,12 @@ services:
     # === 4. ГЛАВНЫЙ ВХОД (Reverse Proxy) ===
     nginx-proxy:
         image: nginxproxy/nginx-proxy
+        # ВАЖНО: Даем жесткое имя, чтобы companion его нашел
+        container_name: nginx-proxy
         ports:
             - "80:80"
             - "443:443"
         volumes:
-            # Абсолютный путь к сокету
             - /var/run/docker.sock:/tmp/docker.sock:ro
             - certs:/etc/nginx/certs
             - vhost:/etc/nginx/vhost.d
@@ -77,8 +76,10 @@ services:
     # === 5. АВТОМАТИЧЕСКИЙ SSL (Let's Encrypt) ===
     acme-companion:
         image: nginxproxy/acme-companion
+        # ВАЖНО: Явно указываем имя контейнера, который надо обслуживать
+        environment:
+            - NGINX_PROXY_CONTAINER=nginx-proxy
         volumes:
-            # Абсолютный путь к сокету
             - /var/run/docker.sock:/var/run/docker.sock:ro
             - certs:/etc/nginx/certs
             - vhost:/etc/nginx/vhost.d
