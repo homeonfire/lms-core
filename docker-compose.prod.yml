@@ -14,9 +14,7 @@ services:
             LARAVEL_SAIL: 1
             XDEBUG_MODE: 'off'
             # === МАГИЯ ДОМЕНОВ ===
-            # Указываем домен, на который должен откликаться этот контейнер
             VIRTUAL_HOST: ${APP_DOMAIN}
-            # Указываем домен для получения SSL сертификата
             LETSENCRYPT_HOST: ${APP_DOMAIN}
             LETSENCRYPT_EMAIL: ${App_EMAIL_ADMIN}
         volumes:
@@ -61,14 +59,14 @@ services:
             timeout: 5s
 
     # === 4. ГЛАВНЫЙ ВХОД (Reverse Proxy) ===
-    # Этот контейнер ловит все запросы из интернета (порт 80 и 443)
     nginx-proxy:
         image: nginxproxy/nginx-proxy
         ports:
             - "80:80"
             - "443:443"
         volumes:
-            - var/run/docker.sock:/tmp/docker.sock:ro
+            # ИСПРАВЛЕНО: Добавлен слэш в начале пути
+            - /var/run/docker.sock:/tmp/docker.sock:ro
             - certs:/etc/nginx/certs
             - vhost:/etc/nginx/vhost.d
             - html:/usr/share/nginx/html
@@ -76,10 +74,10 @@ services:
             - sail
 
     # === 5. АВТОМАТИЧЕСКИЙ SSL (Let's Encrypt) ===
-    # Этот контейнер следит за nginx-proxy и сам заказывает сертификаты
     acme-companion:
         image: nginxproxy/acme-companion
         volumes:
+            # ИСПРАВЛЕНО: Добавлен слэш в начале пути
             - /var/run/docker.sock:/var/run/docker.sock:ro
             - certs:/etc/nginx/certs
             - vhost:/etc/nginx/vhost.d
