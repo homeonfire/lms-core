@@ -32,4 +32,9 @@ class CourseModule extends Model
     {
         return $this->hasMany(Lesson::class, 'module_id')->orderBy('sort_order');
     }
+
+    public function tariffs()
+    {
+        return $this->belongsToMany(Tariff::class, 'module_tariff');
+    }
 }

@@ -1,18 +1,45 @@
 <script setup>
-import LmsLayout from '@/Layouts/LmsLayout.vue'; // Подключаем наш новый лейаут
-import { Head, Link } from '@inertiajs/vue3';
+import LmsLayout from '@/Layouts/LmsLayout.vue';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { ref } from 'vue';
 
-defineProps({
+const props = defineProps({
     courses: Array,
+    filters: Object,
 });
 
-const formatPrice = (price) => {
-    if (price === 0) return 'Бесплатно';
+// Базовое форматирование числа в рубли
+const formatCurrency = (value) => {
     return new Intl.NumberFormat('ru-RU', {
         style: 'currency',
         currency: 'RUB',
         minimumFractionDigits: 0
-    }).format(price / 100);
+    }).format(value);
+};
+
+// Умная функция для вывода цены на карточке
+const getPriceLabel = (course) => {
+    // 1. Если у курса есть тарифы (пришло поле tariffs_min_price)
+    if (course.tariffs_min_price !== null && course.tariffs_min_price !== undefined) {
+        return 'от ' + formatCurrency(course.tariffs_min_price);
+    }
+
+    // 2. Если тарифов нет, смотрим обычную цену
+    if (course.price === 0) {
+        return 'Бесплатно';
+    }
+
+    return formatCurrency(course.price);
+};
+
+// Поиск
+const search = ref(props.filters?.search || '');
+
+const handleSearch = () => {
+    router.get(route('courses.index'), { search: search.value }, {
+        preserveState: true,
+        replace: true,
+    });
 };
 </script>
 
@@ -20,6 +47,7 @@ const formatPrice = (price) => {
     <Head title="Каталог" />
 
     <LmsLayout>
+        <!-- HERO SECTION -->
         <div class="bg-indigo-900 text-white pt-12 pb-24 px-8 relative overflow-hidden">
             <div class="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 rounded-full bg-indigo-500 opacity-20 blur-3xl"></div>
             <div class="absolute bottom-0 left-0 -ml-20 -mb-20 w-72 h-72 rounded-full bg-pink-500 opacity-20 blur-3xl"></div>
@@ -32,31 +60,40 @@ const formatPrice = (price) => {
                     Выбирайте из лучших курсов, созданных экспертами. Прокачивайте навыки в удобном темпе.
                 </p>
                 
+                <!-- Поиск -->
                 <div class="mt-8 max-w-xl">
                     <div class="relative group">
                         <div class="absolute -inset-1 bg-gradient-to-r from-pink-600 to-indigo-600 rounded-lg blur opacity-25 group-hover:opacity-75 transition duration-200"></div>
                         <div class="relative flex items-center bg-white rounded-lg p-2">
                             <svg class="w-6 h-6 text-gray-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                            <input type="text" placeholder="Поиск курса..." class="w-full border-none focus:ring-0 text-gray-800 placeholder-gray-400 h-10 ml-2">
-                            <button class="bg-indigo-600 text-white px-6 py-2 rounded-md font-medium hover:bg-indigo-700 transition">Найти</button>
+                            <input 
+                                type="text" 
+                                v-model="search"
+                                @keydown.enter="handleSearch"
+                                placeholder="Поиск курса..." 
+                                class="w-full border-none focus:ring-0 text-gray-800 placeholder-gray-400 h-10 ml-2 focus:outline-none"
+                            >
+                            <button @click="handleSearch" class="bg-indigo-600 text-white px-6 py-2 rounded-md font-medium hover:bg-indigo-700 transition">Найти</button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- СПИСОК КУРСОВ -->
         <div class="max-w-6xl mx-auto px-6 -mt-16 pb-20 relative z-20">
             
             <div v-if="courses.length === 0" class="bg-white rounded-2xl shadow-xl p-10 text-center">
                 <img src="https://cdn-icons-png.flaticon.com/512/7486/7486747.png" class="w-24 h-24 mx-auto opacity-50 mb-4" alt="">
                 <h3 class="text-xl font-bold text-gray-700">Пока пусто</h3>
-                <p class="text-gray-500">Загляните позже, курсы скоро появятся.</p>
+                <p class="text-gray-500">Курсы по вашему запросу не найдены.</p>
             </div>
 
             <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 
                 <div v-for="course in courses" :key="course.id" class="group bg-white rounded-2xl shadow-sm hover:shadow-2xl transition-all duration-300 flex flex-col overflow-hidden border border-gray-100 transform hover:-translate-y-1">
                     
+                    <!-- Обложка -->
                     <div class="h-56 relative overflow-hidden">
                         <img 
                             v-if="course.thumbnail_url" 
@@ -68,14 +105,21 @@ const formatPrice = (price) => {
                              <svg class="w-16 h-16 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
                         </div>
 
+                        <!-- Бейдж цены -->
                         <div class="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-gray-900 shadow-sm">
-                            {{ formatPrice(course.price) }}
+                            <!-- ИСПОЛЬЗУЕМ НОВУЮ ФУНКЦИЮ -->
+                            {{ getPriceLabel(course) }}
                         </div>
                     </div>
 
+                    <!-- Контент -->
                     <div class="p-6 flex-grow flex flex-col">
                         <div class="flex items-center gap-2 mb-3">
-                             <img :src="course.teacher?.avatar_url || 'https://ui-avatars.com/api/?name=' + (course.teacher?.name || 'T') + '&background=random'" class="w-6 h-6 rounded-full" alt="">
+                             <img 
+                                :src="course.teacher?.avatar_url ? '/storage/' + course.teacher.avatar_url : 'https://ui-avatars.com/api/?name=' + (course.teacher?.name || 'T') + '&background=random'" 
+                                class="w-6 h-6 rounded-full object-cover border border-gray-200" 
+                                alt="Author"
+                             >
                              <span class="text-xs font-medium text-gray-500">{{ course.teacher?.name }}</span>
                         </div>
 

@@ -38,24 +38,39 @@ class CourseModuleResource extends Resource
                         Forms\Components\Select::make('parent_id')
                             ->label('Родительский модуль (папка)')
                             ->options(function (Get $get, ?CourseModule $record) { // Исправили тип аргумента
-    // Берем ID курса, который выбрали выше
-    $courseId = $get('course_id');
-    if (!$courseId) return [];
+                                // Берем ID курса, который выбрали выше
+                                $courseId = $get('course_id');
+                                if (!$courseId) return [];
 
-    $query = CourseModule::query()
-        ->where('course_id', $courseId);
+                                $query = CourseModule::query()
+                                    ->where('course_id', $courseId);
 
-    // ВАЖНОЕ ИСПРАВЛЕНИЕ:
-    // Если мы редактируем запись ($record существует),
-    // берем у неё ID ($record->id), а не весь объект.
-    if ($record) {
-        $query->where('id', '!=', $record->id);
-    }
+                                // ВАЖНОЕ ИСПРАВЛЕНИЕ:
+                                // Если мы редактируем запись ($record существует),
+                                // берем у неё ID ($record->id), а не весь объект.
+                                if ($record) {
+                                    $query->where('id', '!=', $record->id);
+                                }
 
-    return $query->pluck('title', 'id');
-})
+                                return $query->pluck('title', 'id');
+                            })
                             ->searchable()
                             ->placeholder('Без родителя (Корневой модуль)'),
+
+                        Forms\Components\Select::make('tariffs')
+                            ->relationship('tariffs', 'name')
+                            ->label('Доступно на тарифах')
+                            ->multiple()
+                            ->preload()
+                            // ЛОГИКА: Показываем все тарифы ВЫБРАННОГО КУРСА
+                            ->options(function (Forms\Get $get) {
+                                $courseId = $get('course_id');
+                                if (!$courseId) return [];
+                                
+                                return \App\Models\Tariff::where('course_id', $courseId)
+                                    ->pluck('name', 'id');
+                            })
+                            ->helperText('Если пусто — модуль доступен для всех тарифов курса.'),
 
                         Forms\Components\TextInput::make('title')
                             ->required()

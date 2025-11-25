@@ -10,7 +10,15 @@ use Inertia\Inertia;
 Route::get('/', function () {
     return redirect()->route('login');
 });
+// === ПУБЛИЧНЫЕ СТРАНИЦЫ ===
+Route::get('/c/{slug}', [\App\Http\Controllers\Public\PublicCourseController::class, 'show'])->name('public.course.show');
+Route::get('/c/{slug}/thank-you', [\App\Http\Controllers\Public\PublicCourseController::class, 'thankYou'])->name('public.course.thankyou');
+Route::get('/c/{slug}/exists', [\App\Http\Controllers\Public\PublicCourseController::class, 'orderExists'])->name('public.course.order_exists');
+// Статичные страницы (Оферта, Политика)
+Route::get('/p/{slug}', [\App\Http\Controllers\Public\PageController::class, 'show'])->name('public.page');
 
+// Обработка быстрого заказа
+Route::post('/c/{course}/fast-order', [\App\Http\Controllers\Public\FastOrderController::class, 'store'])->name('public.course.fast_order');
 // Группа маршрутов для авторизованных студентов
 Route::middleware(['auth', 'verified'])->group(function () {
 
@@ -38,6 +46,16 @@ Route::post('/learning/{lesson}/complete', [\App\Http\Controllers\Student\Learni
 
 // Логика записи
 Route::post('/courses/{course:slug}/enroll', [\App\Http\Controllers\Student\OrderController::class, 'enroll'])->name('courses.enroll');
+
+// Страница "Спасибо за покупку"
+Route::get('/courses/{course:slug}/thank-you', [\App\Http\Controllers\Student\CourseController::class, 'thankYou'])
+    ->name('courses.thankyou');
+    // Страница "Заказ уже существует"
+Route::get('/courses/{course:slug}/order-exists', [\App\Http\Controllers\Student\CourseController::class, 'orderExists'])
+    ->name('courses.order_exists');
+
+Route::post('/learning/test/{block}/check', [\App\Http\Controllers\Student\LearningController::class, 'checkTest'])
+    ->name('learning.test.check');
 
 // Dashboard теперь пусть ведет на My Learning
 Route::get('/dashboard', function () {

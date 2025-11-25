@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\CourseResource\Pages;
+use App\Filament\Resources\CourseResource\RelationManagers;
 use App\Models\Course;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -16,11 +17,24 @@ class CourseResource extends Resource
 {
     protected static ?string $model = Course::class;
 
-    // Иконка в меню (можно выбрать любую на heroicons.com)
     protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
 
-    // Группа в меню (чтобы не было каши)
     protected static ?string $navigationGroup = 'Управление контентом';
+
+    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        if (auth()->user()->hasRole('Super Admin')) {
+            return $query;
+        }
+
+        if (auth()->user()->hasRole('Teacher')) {
+            return $query->where('teacher_id', auth()->id());
+        }
+        
+        return $query->where('id', -1);
+    }
 
     public static function form(Form $form): Form
     {
@@ -30,18 +44,19 @@ class CourseResource extends Resource
                 Forms\Components\Section::make('О курсе')
                     ->schema([
                         Forms\Components\Select::make('teacher_id')
-    ->relationship('teacher', 'name')
-    ->label('Преподаватель')
-    // Показываем только Админу. Учитель себя не выбирает, он и так автор.
-    ->visible(fn () => auth()->user()->hasRole('Super Admin'))
-    ->required()
-    ->default(auth()->id()), // По умолчанию подставляем текущего юзера
+                            ->relationship('teacher', 'name')
+                            ->label('Преподаватель')
+                            ->disabled(fn () => !auth()->user()->hasRole('Super Admin'))
+                            ->dehydrated() 
+                            ->required()
+                            ->default(auth()->id())
+                            ->searchable()
+                            ->preload(),
 
                         Forms\Components\TextInput::make('title')
                             ->label('Название курса')
                             ->required()
                             ->maxLength(255)
-                            // Магия: при вводе названия обновляем slug
                             ->live(onBlur: true)
                             ->afterStateUpdated(fn (Set $set, ?string $state) => $set('slug', Str::slug($state))),
 
@@ -49,7 +64,7 @@ class CourseResource extends Resource
                             ->label('Ссылка (slug)')
                             ->required()
                             ->maxLength(255)
-                            ->unique(ignoreRecord: true), // Уникальный, но не ругается на самого себя при редактировании
+                            ->unique(ignoreRecord: true),
 
                         Forms\Components\Textarea::make('description')
                             ->label('Краткое описание')
@@ -59,16 +74,35 @@ class CourseResource extends Resource
                 // Секция: Медиа и Настройки
                 Forms\Components\Section::make('Настройки и Цена')
                     ->schema([
+                        // === НОВОЕ ПОЛЕ: ПУБЛИЧНАЯ ССЫЛКА ===
+                        Forms\Components\TextInput::make('public_link')
+                            ->label('Публичная ссылка (Лендинг)')
+                            // Генерируем ссылку на лету
+                            ->formatStateUsing(fn (?Course $record) => $record ? route('public.course.show', $record->slug) : null)
+                            ->disabled() // Нельзя редактировать
+                            ->dehydrated(false) // Не сохранять в БД
+                            ->columnSpanFull()
+                            ->suffixAction(
+                                // Кнопка "Открыть" прямо в поле
+                                \Filament\Forms\Components\Actions\Action::make('open')
+                                    ->icon('heroicon-m-arrow-top-right-on-square')
+                                    ->url(fn (?Course $record) => $record ? route('public.course.show', $record->slug) : null)
+                                    ->openUrlInNewTab()
+                            )
+                            // Показывать только если курс уже создан
+                            ->visible(fn (?Course $record) => $record !== null),
+                        // =======================================
+
                         Forms\Components\FileUpload::make('thumbnail_url')
                             ->label('Обложка курса')
-                            ->image() // Разрешить только картинки
-                            ->directory('course-thumbnails') // Папка хранения
+                            ->image()
+                            ->directory('course-thumbnails')
                             ->visibility('public'),
 
                         Forms\Components\TextInput::make('price')
-                            ->label('Цена (в копейках)')
+                            ->label('Цена (руб)')
                             ->numeric()
-                            ->prefix('RUB')
+                            ->prefix('₽')
                             ->default(0),
 
                         Forms\Components\Grid::make(2)
@@ -94,7 +128,7 @@ class CourseResource extends Resource
             ->columns([
                 Tables\Columns\ImageColumn::make('thumbnail_url')
                     ->label('Обложка')
-                    ->circular(), // Круглая картинка
+                    ->circular(),
 
                 Tables\Columns\TextColumn::make('title')
                     ->label('Название')
@@ -108,12 +142,12 @@ class CourseResource extends Resource
 
                 Tables\Columns\TextColumn::make('price')
                     ->label('Цена')
-                    ->money('rub') // Авто-форматирование валюты
+                    ->money('rub')
                     ->sortable(),
 
                 Tables\Columns\IconColumn::make('is_published')
                     ->label('Статус')
-                    ->boolean(), // Покажет галочку или крестик
+                    ->boolean(),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Создан')
@@ -122,12 +156,20 @@ class CourseResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                // Фильтр: показывать только опубликованные
                 Tables\Filters\Filter::make('published')
                     ->query(fn ($query) => $query->where('is_published', true))
                     ->label('Только опубликованные'),
             ])
             ->actions([
+                // === НОВАЯ КНОПКА В ТАБЛИЦЕ ===
+                Tables\Actions\Action::make('public_link')
+                    ->label('Лендинг')
+                    ->icon('heroicon-o-globe-alt')
+                    ->url(fn (Course $record) => route('public.course.show', $record->slug))
+                    ->openUrlInNewTab()
+                    ->color('gray'), // Нейтральный цвет
+                // ==============================
+
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
@@ -138,13 +180,12 @@ class CourseResource extends Resource
     }
 
     public static function getRelations(): array
-{
-    return [
-        // Не забудь импортировать этот класс сверху (VS Code должен подсказать)
-        // Если не подскажет: use App\Filament\Resources\CourseResource\RelationManagers\ModulesRelationManager;
-        CourseResource\RelationManagers\ModulesRelationManager::class,
-    ];
-}
+    {
+        return [
+            RelationManagers\ModulesRelationManager::class,
+            RelationManagers\TariffsRelationManager::class,
+        ];
+    }
 
     public static function getPages(): array
     {
@@ -153,25 +194,5 @@ class CourseResource extends Resource
             'create' => Pages\CreateCourse::route('/create'),
             'edit' => Pages\EditCourse::route('/{record}/edit'),
         ];
-    }
-
-    // Добавь этот метод внутрь класса CourseResource
-    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
-    {
-        // Берем стандартный запрос
-        $query = parent::getEloquentQuery();
-
-        // Если это Админ — показываем всё
-        if (auth()->user()->hasRole('Super Admin')) {
-            return $query;
-        }
-
-        // Если это Учитель — фильтруем только ЕГО курсы
-        if (auth()->user()->hasRole('Teacher')) {
-            return $query->where('teacher_id', auth()->id());
-        }
-        
-        // Всем остальным не показываем ничего (на всякий случай)
-        return $query->where('id', -1);
     }
 }

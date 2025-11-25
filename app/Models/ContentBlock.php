@@ -17,4 +17,9 @@ class ContentBlock extends Model
     {
         return $this->belongsTo(Lesson::class);
     }
+
+    public function testResults()
+{
+    return $this->hasMany(TestResult::class, 'content_block_id');
+}
 }

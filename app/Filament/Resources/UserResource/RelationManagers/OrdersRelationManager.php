@@ -48,7 +48,7 @@ class OrdersRelationManager extends RelationManager
                     ->label('Сумма')
                     ->money('rub')
                     // Если сумма 0, пишем "Подарок"
-                    ->formatStateUsing(fn (int $state) => $state === 0 ? '🎁 Подарок' : number_format($state / 100, 0, '.', ' ') . ' ₽'),
+                    ->formatStateUsing(fn (int $state) => $state === 0 ? '🎁 Подарок' : number_format($state, 0, '.', ' ') . ' ₽'),
 
                 Tables\Columns\BadgeColumn::make('status')
                     ->label('Статус')

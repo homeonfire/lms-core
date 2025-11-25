@@ -41,6 +41,11 @@ class OrderResource extends Resource
             return $query;
         }
 
+        // Менеджер видит всё
+        if (auth()->user()->hasRole('Manager')) {
+            return $query;
+        }
+
         // Учитель видит только заказы на СВОИ курсы
         if (auth()->user()->hasRole('Teacher')) {
             return $query->whereHas('course', function ($q) {
@@ -74,17 +79,21 @@ class OrderResource extends Resource
                                     ->dehydrated()
                                     ->required(),
 
+                                // === НОВОЕ ПОЛЕ: ТАРИФ ===
+                                Forms\Components\Select::make('tariff_id')
+                                    ->relationship('tariff', 'name')
+                                    ->label('Тариф')
+                                    ->placeholder('Без тарифа (Стандарт)')
+                                    ->disabled() // Обычно тариф не меняют после покупки
+                                    ->dehydrated(),
+                                // =========================
+
                                 Forms\Components\TextInput::make('amount')
                                     ->label('Сумма (руб)')
-                                    ->formatStateUsing(fn ($state) => $state / 100)
-                                    ->dehydrateStateUsing(fn ($state) => $state * 100)
                                     ->prefix('₽')
                                     ->numeric()
                                     ->disabled(),
                             ])->columns(2),
-                        
-                        // ПРИМЕЧАНИЕ: Старое поле 'notes' удалено отсюда, 
-                        // так как теперь заметки находятся во вкладке "Чат" снизу.
                     ])
                     ->columnSpan(['lg' => 2]),
 
@@ -140,7 +149,16 @@ class OrderResource extends Resource
 
                 Tables\Columns\TextColumn::make('course.title')
                     ->label('Курс')
-                    ->limit(25),
+                    ->limit(20)
+                    ->tooltip(fn (Order $record) => $record->course->title),
+
+                // === НОВАЯ КОЛОНКА: ТАРИФ ===
+                Tables\Columns\TextColumn::make('tariff.name')
+                    ->label('Тариф')
+                    ->badge() // Сделаем красиво в виде бейджика
+                    ->color('gray')
+                    ->placeholder('—'),
+                // ============================
 
                 Tables\Columns\TextColumn::make('amount')
                     ->label('Сумма')
@@ -185,7 +203,6 @@ class OrderResource extends Resource
     public static function getRelations(): array
     {
         return [
-            // Подключаем наш Чат/Заметки
             RelationManagers\OrderNotesRelationManager::class,
         ];
     }
@@ -201,6 +218,6 @@ class OrderResource extends Resource
 
     public static function canCreate(): bool
     {
-        return false; // Заказы создаются через "Подарок" или через фронтенд
+        return false; 
     }
 }

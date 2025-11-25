@@ -32,6 +32,10 @@ class User extends Authenticatable implements FilamentUser
             'password' => 'hashed',
             'last_seen_at' => 'datetime',
             'is_active' => 'boolean',
+            // Новые поля
+            'accepted_offer_at' => 'datetime',
+            'accepted_policy_at' => 'datetime',
+            'accepted_marketing_at' => 'datetime',
         ];
     }
 
@@ -69,4 +73,12 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->hasMany(Order::class);
     }
+
+    // Курсы, где я назначен куратором
+    public function curatedCourses()
+    {
+        return $this->belongsToMany(Course::class, 'course_curator', 'user_id', 'course_id');
+    }
+
+    
 }

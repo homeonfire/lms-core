@@ -34,4 +34,15 @@ class Course extends Model
     {
         return $this->hasMany(Order::class);
     }
+
+    // Кураторы курса
+    public function curators()
+    {
+        return $this->belongsToMany(User::class, 'course_curator', 'course_id', 'user_id');
+    }
+
+    public function tariffs()
+    {
+        return $this->hasMany(Tariff::class);
+    }
 }

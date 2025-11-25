@@ -93,13 +93,13 @@ const submit = () => {
                         />
                     </div>
 
-                    <PrimaryButton
+                    <button
                         type="button"
-                        class="bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-indigo-500 shadow-sm"
+                        class="px-4 py-2 bg-white text-indigo-700 border border-indigo-200 rounded-md font-semibold text-xs uppercase tracking-widest hover:bg-indigo-50 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 shadow-sm transition ease-in-out duration-150"
                         @click.prevent="selectNewPhoto"
                     >
                         Изменить фото
-                    </PrimaryButton>
+                    </button>
                 </div>
             </div>
 

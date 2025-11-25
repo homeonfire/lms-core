@@ -22,32 +22,84 @@ class HomeworkResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Привязка')
+                Forms\Components\Section::make('Привязка к уроку')
                     ->schema([
-                        Forms\Components\Select::make('lesson_id')
+                        // 1. ВЫБОР КУРСА (Фильтр)
+                        Forms\Components\Select::make('course_id')
+                            ->label('Курс')
                             ->options(function () {
-        $query = \App\Models\Lesson::query();
+                                $query = \App\Models\Course::query();
+                                // Если учитель - показываем только его курсы
+                                if (!auth()->user()->hasRole('Super Admin')) {
+                                    $query->where('teacher_id', auth()->id());
+                                }
+                                return $query->pluck('title', 'id');
+                            })
+                            ->required()
+                            ->live() // Обновляет форму при изменении
+                            ->afterStateUpdated(function (Forms\Set $set) {
+                                // При смене курса сбрасываем модуль и урок
+                                $set('module_id', null);
+                                $set('lesson_id', null);
+                            })
+                            ->dehydrated(false) // Не сохраняем в таблицу homeworks
+                            // При открытии на редактирование - находим курс через урок
+                            ->afterStateHydrated(function (Forms\Components\Select $component, ?\App\Models\Homework $record) {
+                                if ($record && $record->lesson && $record->lesson->module) {
+                                    $component->state($record->lesson->module->course_id);
+                                }
+                            }),
 
-        // Если учитель — показываем только уроки из его курсов
-        if (!auth()->user()->hasRole('Super Admin')) {
-            $query->whereHas('module.course', function ($q) {
-                $q->where('teacher_id', auth()->id());
-            });
-        }
-
-        return $query->pluck('title', 'id');
-    })
-                            ->label('К какому уроку')
+                        // 2. ВЫБОР МОДУЛЯ (Фильтр)
+                        Forms\Components\Select::make('module_id')
+                            ->label('Модуль')
+                            ->options(function (Forms\Get $get) {
+                                $courseId = $get('course_id');
+                                if (!$courseId) return [];
+                                
+                                // Грузим модули выбранного курса
+                                return \App\Models\CourseModule::where('course_id', $courseId)
+                                    ->pluck('title', 'id');
+                            })
+                            ->required()
                             ->searchable()
                             ->preload()
+                            ->live()
+                            ->afterStateUpdated(fn (Forms\Set $set) => $set('lesson_id', null))
+                            ->disabled(fn (Forms\Get $get) => !$get('course_id')) // Блокируем, если нет курса
+                            ->dehydrated(false)
+                            // При редактировании - находим модуль через урок
+                            ->afterStateHydrated(function (Forms\Components\Select $component, ?\App\Models\Homework $record) {
+                                if ($record && $record->lesson) {
+                                    $component->state($record->lesson->module_id);
+                                }
+                            }),
+
+                        // 3. ВЫБОР УРОКА (Цель)
+                        Forms\Components\Select::make('lesson_id')
+                            ->label('Урок')
+                            ->options(function (Forms\Get $get) {
+                                $moduleId = $get('module_id');
+                                if (!$moduleId) return [];
+
+                                // Грузим уроки выбранного модуля
+                                return \App\Models\Lesson::where('module_id', $moduleId)
+                                    ->pluck('title', 'id');
+                            })
                             ->required()
+                            ->searchable()
+                            ->preload()
+                            ->disabled(fn (Forms\Get $get) => !$get('module_id')) // Блокируем, если нет модуля
                             ->helperText('В одном уроке может быть только одно задание'),
                         
+                        // ГАЛОЧКА "ОБЯЗАТЕЛЬНОЕ"
                         Forms\Components\Toggle::make('is_required')
                             ->label('Обязательное задание')
                             ->default(true)
-                            ->helperText('Если включено — стоп-урок не пустит дальше без сдачи'),
-                    ])->columns(2),
+                            ->helperText('Стоп-урок не пустит дальше без сдачи')
+                            ->inline(false), // Чтобы выравнивание было красивым
+                            
+                    ])->columns(3), // Выстраиваем 3 селекта в ряд
 
                 Forms\Components\Section::make('Суть задания')
                     ->schema([

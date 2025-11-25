@@ -41,4 +41,9 @@ class Lesson extends Model
             ->withPivot(['unlocked_at', 'completed_at'])
             ->withTimestamps();
     }
+
+    public function tariffs()
+    {
+        return $this->belongsToMany(Tariff::class, 'lesson_tariff');
+    }
 }

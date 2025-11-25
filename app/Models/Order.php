@@ -32,4 +32,9 @@ class Order extends Model
     {
         return $this->hasMany(OrderNote::class)->orderBy('created_at', 'desc');
     }
+
+    public function tariff()
+    {
+        return $this->belongsTo(Tariff::class);
+    }
 }

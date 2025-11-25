@@ -1,26 +1,26 @@
 <script setup>
-import { Head, Link, router } from '@inertiajs/vue3';       
+import { Head, Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
-// 1. Импортируем компонент ДЗ
 import HomeworkWidget from '@/Components/HomeworkWidget.vue';
+import QuizBlock from '@/Components/QuizBlock.vue';
 
-// 2. Добавляем homework и submission в список входящих данных
 const props = defineProps({
     course: Object,
     syllabus: Array,
     lesson: Object,
-    homework: Object,    // <--- Важно
-    submission: Object,  // <--- Важно
+    homework: Object,
+    submission: Object,
+    prevLessonUrl: String,
+    canComplete: Boolean,
 });
 
 const isSidebarOpen = ref(true);
 const isCurrentLesson = (lessonId) => props.lesson.id === lessonId;
 
-// Функция для перехода
 const nextLesson = () => {
-    // Отправляем запрос. Сервер сам решит, куда нас перенаправить (на след. урок или на финиш)
+    if (!props.canComplete) return;
     router.post(route('learning.complete', props.lesson.id));
-};  
+};
 </script>
 
 <template>
@@ -28,6 +28,7 @@ const nextLesson = () => {
 
     <div class="flex h-screen bg-gray-100 overflow-hidden">
         
+        <!-- SIDEBAR -->
         <aside 
             class="bg-white w-80 border-r border-gray-200 flex-shrink-0 flex flex-col transition-all duration-300"
             :class="{ '-ml-80': !isSidebarOpen }"
@@ -40,11 +41,20 @@ const nextLesson = () => {
             </div>
 
             <div class="flex-1 overflow-y-auto p-4 space-y-4">
+                <!-- 
+                    ВАЖНО: Здесь теперь только доступные модули и уроки.
+                    Мы убрали проверки v-if="!is_locked", так как бэкенд уже все отфильтровал.
+                -->
                 <div v-for="module in syllabus" :key="module.id">
-                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-2">
-                        {{ module.title }}
-                    </h3>
+                    
+                    <!-- Заголовок Модуля -->
+                    <div class="flex items-center justify-between mb-2 px-2">
+                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                            {{ module.title }}
+                        </h3>
+                    </div>
 
+                    <!-- Уроки -->
                     <ul class="space-y-1 mb-2">
                         <li v-for="l in module.lessons" :key="l.id">
                             <Link 
@@ -59,9 +69,13 @@ const nextLesson = () => {
                         </li>
                     </ul>
 
-                    <div v-if="module.children" class="pl-4 border-l-2 border-gray-100 ml-2 space-y-4">
+                    <!-- Вложенные модули -->
+                    <div v-if="module.children && module.children.length > 0" class="pl-4 border-l-2 border-gray-100 ml-2 space-y-4">
                         <div v-for="child in module.children" :key="child.id">
-                             <h4 class="text-xs font-semibold text-gray-500 mb-1">{{ child.title }}</h4>
+                             <div class="flex items-center justify-between mb-1">
+                                <h4 class="text-xs font-semibold text-gray-500">{{ child.title }}</h4>
+                             </div>
+                             
                              <ul class="space-y-1">
                                 <li v-for="cl in child.lessons" :key="cl.id">
                                     <Link 
@@ -79,9 +93,9 @@ const nextLesson = () => {
             </div>
         </aside>
 
-
+        <!-- 2. MAIN AREA -->
         <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
-            
+            <!-- Header -->
             <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0">
                 <button @click="isSidebarOpen = !isSidebarOpen" class="text-gray-500 hover:text-gray-700">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
@@ -91,74 +105,60 @@ const nextLesson = () => {
                 </h1>
             </header>
 
+            <!-- Content -->
             <div class="flex-1 overflow-y-auto bg-gray-50 p-6 lg:p-10">
                 <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-100 p-8 min-h-full">
                     
+                    <!-- BLOCKS -->
                     <div class="space-y-8">
                         <div v-for="block in lesson.blocks" :key="block.id" class="content-block">
+                            <div v-if="block.type === 'text'" class="prose prose-indigo max-w-none" v-html="block.content.html"></div>
                             
-                            <div 
-                                v-if="block.type === 'text'" 
-                                class="prose prose-indigo max-w-none"
-                                v-html="block.content.html"
-                            ></div>
-
-                            <div v-else-if="block.type.startsWith('video_')" class="rounded-xl overflow-hidden bg-black aspect-video shadow-lg">
-                                <iframe 
-                                    :src="block.content.url" 
-                                    class="w-full h-full" 
-                                    frameborder="0" 
-                                    allow="autoplay; fullscreen; picture-in-picture" 
-                                    allowfullscreen
-                                ></iframe>
+                            <div v-else-if="block.type === 'quiz'">
+                                <QuizBlock :block="block" :result="block.test_results?.[0]" />
                             </div>
-
+                            
+                            <div v-else-if="block.type.startsWith('video_')" class="rounded-xl overflow-hidden bg-black aspect-video shadow-lg">
+                                <iframe :src="block.content.url" class="w-full h-full" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>
+                            </div>
+                            
                             <div v-else-if="block.type === 'image'" class="flex justify-center">
                                 <img :src="'/storage/' + block.content.image_path" class="rounded-lg shadow-md max-h-[500px]">
                             </div>
-
+                            
                             <div v-else-if="block.type === 'file'" class="flex items-center p-4 bg-indigo-50 border border-indigo-100 rounded-lg">
                                 <svg class="w-8 h-8 text-indigo-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
                                 <div class="flex-1">
                                     <p class="font-medium text-indigo-900">{{ block.content.file_name }}</p>
                                     <p class="text-xs text-indigo-500">Файл для скачивания</p>
                                 </div>
-                                <a :href="'/storage/' + block.content.file_path" download class="px-4 py-2 bg-white text-indigo-600 text-sm font-bold rounded border border-indigo-200 hover:bg-indigo-50 transition">
-                                    Скачать
-                                </a>
+                                <a :href="'/storage/' + block.content.file_path" download class="px-4 py-2 bg-white text-indigo-600 text-sm font-bold rounded border border-indigo-200 hover:bg-indigo-50 transition">Скачать</a>
                             </div>
-
+                            
                             <hr v-else-if="block.type === 'separator'" class="my-8 border-gray-200">
-
                         </div>
 
-                        
-
-                        <div v-if="lesson.blocks.length === 0" class="text-center text-gray-400 italic py-10">
-                            Этот урок пока пуст.
-                        </div>
+                        <div v-if="lesson.blocks.length === 0" class="text-center text-gray-400 italic py-10">Этот урок пока пуст.</div>
                     </div>
 
+                    <!-- Homework -->
                     <div v-if="homework" class="max-w-3xl mx-auto mt-16">
-                        <HomeworkWidget 
-                            :homework="homework" 
-                            :submission="submission" 
-                        />
+                        <HomeworkWidget :homework="homework" :submission="submission" />
                     </div>
 
-                    <div class="mt-16 flex justify-between pt-6 border-t border-gray-100">
-    <button class="text-gray-500 hover:text-gray-900 font-medium">← Предыдущий</button>
-    
-    <button 
-        @click="nextLesson"
-        class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg shadow-indigo-200 transition"
-    >
-        Завершить и далее →
-    </button>
-</div>
-
-                    
-
+                    <!-- Navigation Buttons -->
+                    <div class="mt-16 flex justify-between pt-6 border-t border-gray-100 items-center">
+                        <div v-if="prevLessonUrl">
+                            <Link :href="prevLessonUrl" class="text-gray-500 hover:text-gray-900 font-medium flex items-center">← Предыдущий</Link>
+                        </div>
+                        <div v-else class="text-gray-300 font-medium cursor-not-allowed">← Предыдущий</div>
+                        
+                        <button @click="nextLesson" :disabled="!canComplete" class="px-6 py-3 rounded-lg font-bold shadow-lg transition flex items-center gap-2" :class="canComplete ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200' : 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none opacity-70'">
+                            <span>Завершить и далее</span>
+                            <svg v-if="!canComplete" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+                        </button>
+                    </div>
                 </div>
             </div>
         </main>

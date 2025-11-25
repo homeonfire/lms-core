@@ -21,7 +21,8 @@ class CoursePolicy
     // Просмотр списка (разрешено всем, кто вошел в админку)
     public function viewAny(User $user): bool
     {
-        return $user->hasRole('Teacher');
+        // Только Админ и Учитель
+        return $user->hasRole('Super Admin') || $user->hasRole('Teacher');
     }
 
     // Просмотр одного курса
@@ -34,7 +35,8 @@ class CoursePolicy
     // Создание (разрешено Учителям)
     public function create(User $user): bool
     {
-        return $user->hasRole('Teacher');
+        // Куратор НЕ может создавать курсы
+        return $user->hasRole('Teacher'); 
     }
 
     // Редактирование

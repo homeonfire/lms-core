@@ -9,6 +9,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class HomeworkSubmissionResource extends Resource
 {
@@ -127,18 +128,27 @@ class HomeworkSubmissionResource extends Resource
         return false;
     }
 
-    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
+        $user = auth()->user();
 
-        if (auth()->user()->hasRole('Super Admin')) {
+        // 1. Супер-Админ видит всё
+        if ($user->hasRole('Super Admin')) {
             return $query;
         }
 
-        if (auth()->user()->hasRole('Teacher')) {
-            // Цепочка: Сдача -> ДЗ -> Урок -> Модуль -> Курс -> Учитель
-            return $query->whereHas('homework.lesson.module.course', function ($q) {
-                $q->where('teacher_id', auth()->id());
+        // 2. Учитель видит всё по своим курсам
+        if ($user->hasRole('Teacher')) {
+            return $query->whereHas('homework.lesson.module.course', function ($q) use ($user) {
+                $q->where('teacher_id', $user->id);
+            });
+        }
+
+        // 3. Куратор видит всё по НАЗНАЧЕННЫМ курсам
+        if ($user->hasRole('Curator')) {
+            return $query->whereHas('homework.lesson.module.course.curators', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
             });
         }
 
