@@ -46,7 +46,7 @@ class RegisteredUserController extends Controller
         // Выдаем роль Ученика автоматически
         $user->assignRole('Student'); 
         // ============================
-
+        $user->notify(new \App\Notifications\WelcomeStudent());
         event(new Registered($user));
 
         Auth::login($user);

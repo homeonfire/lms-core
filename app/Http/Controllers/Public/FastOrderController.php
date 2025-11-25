@@ -52,9 +52,6 @@ class FastOrderController extends Controller
 
         // Логика поиска/создания юзера
         if (!$user) {
-            $user = User::where('email', $request->email)->first();
-
-            if (!$user) {
                 // Создаем нового
                 $user = User::create([
                     'name' => $request->name,
@@ -62,9 +59,13 @@ class FastOrderController extends Controller
                     'password' => Hash::make($request->password),
                 ]);
                 $user->assignRole('Student');
+                
+                // === ДОБАВЛЯЕМ СЮДА ТОЖЕ ===
+                $user->notify(new \App\Notifications\WelcomeStudent());
+                // ===========================
+                
                 Auth::login($user);
             }
-        }
 
         // --- СОХРАНЯЕМ СОГЛАСИЯ (Обновляем таймстемпы, если пришла галочка) ---
         if ($request->accepted_offer_at) { 
