@@ -1,5 +1,5 @@
 services:
-    # 1. Приложение (Laravel)
+    # 1. Основное приложение (Веб-сервер)
     laravel.test:
         build:
             context: ./docker/8.2
@@ -24,7 +24,30 @@ services:
             - pgsql
             - redis
 
-    # 2. База данных
+    # === 2. ВОРКЕР ОЧЕРЕДЕЙ (Queue Worker) ===
+    queue:
+        build:
+            context: ./docker/8.2
+            dockerfile: Dockerfile
+            args:
+                WWWGROUP: 1000
+        image: sail-8.2/app
+        restart: unless-stopped
+        # Команда запуска - обрабатывать очередь
+        command: php artisan queue:work --tries=3 --timeout=90
+        environment:
+            WWWUSER: 1000
+            LARAVEL_SAIL: 1
+            XDEBUG_MODE: 'off'
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            - pgsql
+            - redis
+
+    # 3. База данных
     pgsql:
         image: 'postgres:15'
         ports:
@@ -43,7 +66,7 @@ services:
             retries: 3
             timeout: 5s
 
-    # 3. Redis
+    # 4. Redis
     redis:
         image: 'redis:alpine'
         ports:
@@ -57,10 +80,9 @@ services:
             retries: 3
             timeout: 5s
 
-    # === 4. ГЛАВНЫЙ ВХОД (Reverse Proxy) ===
+    # 5. Прокси (Вход)
     nginx-proxy:
         image: nginxproxy/nginx-proxy
-        # ВАЖНО: Даем жесткое имя, чтобы companion его нашел
         container_name: nginx-proxy
         ports:
             - "80:80"
@@ -73,10 +95,9 @@ services:
         networks:
             - sail
 
-    # === 5. АВТОМАТИЧЕСКИЙ SSL (Let's Encrypt) ===
+    # 6. SSL Автоматизация
     acme-companion:
         image: nginxproxy/acme-companion
-        # ВАЖНО: Явно указываем имя контейнера, который надо обслуживать
         environment:
             - NGINX_PROXY_CONTAINER=nginx-proxy
         volumes:
