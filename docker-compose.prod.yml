@@ -1,5 +1,5 @@
 services:
-    # 1. Основное приложение (Веб-сервер)
+    # 1. Приложение
     laravel.test:
         build:
             context: ./docker/8.2
@@ -24,7 +24,7 @@ services:
             - pgsql
             - redis
 
-    # === 2. ВОРКЕР ОЧЕРЕДЕЙ (Queue Worker) ===
+    # 2. Воркер очередей (Почта, Тесты)
     queue:
         build:
             context: ./docker/8.2
@@ -33,7 +33,6 @@ services:
                 WWWGROUP: 1000
         image: sail-8.2/app
         restart: unless-stopped
-        # Команда запуска - обрабатывать очередь
         command: php artisan queue:work --tries=3 --timeout=90
         environment:
             WWWUSER: 1000
@@ -80,7 +79,7 @@ services:
             retries: 3
             timeout: 5s
 
-    # 5. Прокси (Вход)
+    # 5. Прокси (Входная точка 80/443)
     nginx-proxy:
         image: nginxproxy/nginx-proxy
         container_name: nginx-proxy
@@ -95,7 +94,7 @@ services:
         networks:
             - sail
 
-    # 6. SSL Автоматизация
+    # 6. SSL (Автоматический https)
     acme-companion:
         image: nginxproxy/acme-companion
         environment:
