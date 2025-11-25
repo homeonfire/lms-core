@@ -2,7 +2,8 @@ services:
     # 1. Приложение (Laravel)
     laravel.test:
         build:
-            context: ./vendor/laravel/sail/runtimes/8.2
+            # ВАЖНО: Теперь берем Dockerfile из нашей папки, которая есть в Git
+            context: ./docker/8.2
             dockerfile: Dockerfile
             args:
                 WWWGROUP: 1000
@@ -65,7 +66,7 @@ services:
             - "80:80"
             - "443:443"
         volumes:
-            # ИСПРАВЛЕНО: Добавлен слэш в начале пути
+            # Абсолютный путь к сокету
             - /var/run/docker.sock:/tmp/docker.sock:ro
             - certs:/etc/nginx/certs
             - vhost:/etc/nginx/vhost.d
@@ -77,7 +78,7 @@ services:
     acme-companion:
         image: nginxproxy/acme-companion
         volumes:
-            # ИСПРАВЛЕНО: Добавлен слэш в начале пути
+            # Абсолютный путь к сокету
             - /var/run/docker.sock:/var/run/docker.sock:ro
             - certs:/etc/nginx/certs
             - vhost:/etc/nginx/vhost.d
