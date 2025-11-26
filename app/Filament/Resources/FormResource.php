@@ -3,7 +3,8 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\FormResource\Pages;
-use App\Models\Form as FormModel; // Алиас, чтобы не путать с классом Form Filament
+use App\Filament\Resources\FormResource\RelationManagers; // <--- Правильный импорт
+use App\Models\Form as FormModel;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -122,6 +123,14 @@ class FormResource extends Resource
                     ->url(fn (FormModel $record) => route('public.form.show', $record->slug))
                     ->openUrlInNewTab(),
             ]);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            // Теперь Filament найдет этот класс
+            RelationManagers\SubmissionsRelationManager::class,
+        ];
     }
 
     public static function getPages(): array
