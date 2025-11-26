@@ -23,8 +23,8 @@ const logout = () => {
         <aside class="hidden md:flex flex-col w-64 bg-white border-r border-gray-100 fixed h-full z-20">
             <div class="h-16 flex items-center px-8 border-b border-gray-50">
                 <Link :href="route('courses.index')" class="flex items-center gap-2">
-                    <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">L</div>
-                    <span class="text-xl font-bold text-gray-800 tracking-tight">LMS Core</span>
+                    <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">PS</div>
+                    <span class="text-xl font-bold text-gray-800 tracking-tight">PRO Skills</span>
                 </Link>
             </div>
 
