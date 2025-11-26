@@ -40,6 +40,9 @@ class HandleInertiaRequests extends Middleware
                 'error' => fn () => $request->session()->get('error'),
                 'message' => fn () => $request->session()->get('message'),
             ],
+            // === ДОБАВИЛИ ЭТУ СТРОКУ ===
+            'appName' => config('app.name'), 
+            // ===========================
         ];
     }
 }
