@@ -19,6 +19,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
 
         //
+        $middleware->web(append: [
+            \App\Http\Middleware\CaptureUtmParameters::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

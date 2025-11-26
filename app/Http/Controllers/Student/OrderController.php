@@ -57,7 +57,8 @@ class OrderController extends Controller
             'amount' => $amount,
             'status' => $isFree ? 'paid' : 'new',
             'paid_at' => $isFree ? now() : null,
-            'history_log' => ['action' => 'created_by_student', 'ip' => request()->ip()]
+            'history_log' => ['action' => 'created_by_student', 'ip' => request()->ip()],
+            'utm_data' => $this->getUtmFromCookies(),
         ]);
 
         if ($isFree) {

@@ -36,6 +36,7 @@ class User extends Authenticatable implements FilamentUser
             'accepted_offer_at' => 'datetime',
             'accepted_policy_at' => 'datetime',
             'accepted_marketing_at' => 'datetime',
+            'utm_data' => 'array',
         ];
     }
 

@@ -12,9 +12,11 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Traits\HasUtmCollection;
 
 class RegisteredUserController extends Controller
 {
+    use HasUtmCollection;
     /**
      * Display the registration view.
      */
@@ -40,6 +42,7 @@ class RegisteredUserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'utm_data' => $this->getUtmFromCookies(), // <--- СОХРАНЯЕМ UTM
         ]);
 
         // === ДОБАВЛЯЕМ ЭТУ СТРОКУ ===

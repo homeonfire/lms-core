@@ -126,6 +126,16 @@ class OrderResource extends Resource
 
                                 Forms\Components\DateTimePicker::make('paid_at')
                                     ->label('Дата оплаты'),
+                                Forms\Components\Section::make('Маркетинг (UTM)')
+                                    ->schema([
+                                        Forms\Components\KeyValue::make('utm_data')
+                                            ->label('Метки')
+                                            ->keyLabel('Параметр')
+                                            ->valueLabel('Значение')
+                                            ->disabled(), // Только чтение
+                                    ])
+                                    ->collapsed() // Свернуть, чтобы не мешало
+                                    ->columnSpan(['lg' => 3]),
                             ]),
                     ])
                     ->columnSpan(['lg' => 1]),

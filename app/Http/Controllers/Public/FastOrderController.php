@@ -11,9 +11,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
+use App\Traits\HasUtmCollection;
 
 class FastOrderController extends Controller
 {
+    use HasUtmCollection;
+
     public function store(Request $request, Course $course)
     {
         $user = Auth::user();
@@ -57,6 +60,7 @@ class FastOrderController extends Controller
                     'name' => $request->name,
                     'email' => $request->email,
                     'password' => Hash::make($request->password),
+                    'utm_data' => $this->getUtmFromCookies(),
                 ]);
                 $user->assignRole('Student');
                 
@@ -131,7 +135,8 @@ class FastOrderController extends Controller
             'amount' => $amount,
             'status' => $isFree ? 'paid' : 'new',
             'paid_at' => $isFree ? now() : null,
-            'history_log' => ['action' => 'fast_order', 'ip' => request()->ip()]
+            'history_log' => ['action' => 'fast_order', 'ip' => request()->ip()],
+            'utm_data' => $this->getUtmFromCookies(),
         ]);
 
         if ($isFree && Auth::check()) {

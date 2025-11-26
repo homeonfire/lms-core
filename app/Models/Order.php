@@ -11,6 +11,7 @@ class Order extends Model
     protected $casts = [
         'history_log' => 'array',
         'paid_at' => 'datetime',
+        'utm_data' => 'array',
     ];
 
     public function user()

@@ -88,6 +88,17 @@ class UserResource extends Resource
                             ->label('Активен (Бан)')
                             ->default(true)
                             ->visible(fn () => auth()->user()->hasRole('Super Admin')),
+
+                        Forms\Components\Section::make('Маркетинг (UTM)')
+                            ->schema([
+                                Forms\Components\KeyValue::make('utm_data')
+                                    ->label('Метки')
+                                    ->keyLabel('Параметр')
+                                    ->valueLabel('Значение')
+                                    ->disabled(), // Только чтение
+                            ])
+                            ->collapsed() // Свернуть, чтобы не мешало
+                            ->columnSpan(['lg' => 3]),
                     ])->columns(2),
             ]);
     }
