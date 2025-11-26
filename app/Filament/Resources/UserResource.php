@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
+use App\Filament\Resources\UserResource\RelationManagers;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -11,6 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletingScope; // <--- Добавили импорт
 
 class UserResource extends Resource
 {
@@ -20,28 +22,25 @@ class UserResource extends Resource
     protected static ?string $navigationGroup = 'Настройки системы';
     protected static ?string $navigationLabel = 'Пользователи';
 
-    // === ГЛОБАЛЬНАЯ ФИЛЬТРАЦИЯ (КТО КОГО ВИДИТ) ===
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery();
+        // Добавляем withoutGlobalScopes, чтобы видеть мягко удаленных при фильтрации
+        $query = parent::getEloquentQuery()
+            ->withoutGlobalScopes([
+                SoftDeletingScope::class,
+            ]);
 
-        // 1. Супер-Админ видит всех
         if (auth()->user()->hasRole('Super Admin')) {
             return $query;
         }
 
-        // 2. Учитель видит только СВОИХ студентов
         if (auth()->user()->hasRole('Teacher')) {
-            // Логика: Найти пользователей, у которых есть ЗАКАЗ (Order)
-            // на КУРС, автором которого является текущий учитель.
             return $query->whereHas('orders.course', function ($q) {
                 $q->where('teacher_id', auth()->id());
             })
-            // Опционально: можно добавить, чтобы учитель видел и самого себя
             ->orWhere('id', auth()->id());
         }
 
-        // Остальные не видят никого
         return $query->where('id', -1);
     }
 
@@ -60,22 +59,17 @@ class UserResource extends Resource
                             ->email()
                             ->required()
                             ->maxLength(255)
-                            // Уникальность, игнорируя текущего юзера при редактировании
                             ->unique(ignoreRecord: true),
 
                         Forms\Components\TextInput::make('password')
                             ->label('Пароль')
                             ->password()
                             ->maxLength(255)
-                            // Показываем поле required только при создании
                             ->required(fn (string $operation): bool => $operation === 'create')
-                            // Хэшируем пароль перед сохранением
                             ->dehydrateStateUsing(fn ($state) => Hash::make($state))
-                            // Если поле пустое при редактировании — не обновляем пароль
                             ->dehydrated(fn ($state) => filled($state))
-                            ->visible(fn () => auth()->user()->hasRole('Super Admin')), // Пароли меняет только Админ
+                            ->visible(fn () => auth()->user()->hasRole('Super Admin')),
 
-                        // Выбор РОЛИ (Только для Админа)
                         Forms\Components\Select::make('roles')
                             ->label('Роль')
                             ->relationship('roles', 'name')
@@ -88,17 +82,6 @@ class UserResource extends Resource
                             ->label('Активен (Бан)')
                             ->default(true)
                             ->visible(fn () => auth()->user()->hasRole('Super Admin')),
-
-                        Forms\Components\Section::make('Маркетинг (UTM)')
-                            ->schema([
-                                Forms\Components\KeyValue::make('utm_data')
-                                    ->label('Метки')
-                                    ->keyLabel('Параметр')
-                                    ->valueLabel('Значение')
-                                    ->disabled(), // Только чтение
-                            ])
-                            ->collapsed() // Свернуть, чтобы не мешало
-                            ->columnSpan(['lg' => 3]),
                     ])->columns(2),
             ]);
     }
@@ -120,7 +103,6 @@ class UserResource extends Resource
                 Tables\Columns\TextColumn::make('email')
                     ->searchable(),
 
-                // Показываем роль красивым бейджиком
                 Tables\Columns\TextColumn::make('roles.name')
                     ->label('Роль')
                     ->badge()
@@ -138,21 +120,35 @@ class UserResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                // === ФИЛЬТР ПО РОЛЯМ ===
                 Tables\Filters\SelectFilter::make('roles')
                     ->label('Роль')
                     ->relationship('roles', 'name'),
+                
+                // === НОВЫЙ ФИЛЬТР: КОРЗИНА ===
+                Tables\Filters\TrashedFilter::make(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
                 
-                // Удаление доступно ТОЛЬКО Супер-Админу
+                // Обычное удаление (Мягкое)
                 Tables\Actions\DeleteAction::make()
+                    ->visible(fn (User $record) => auth()->user()->hasRole('Super Admin') && $record->id !== auth()->id()),
+                
+                // Восстановление
+                Tables\Actions\RestoreAction::make()
+                    ->visible(fn () => auth()->user()->hasRole('Super Admin')),
+
+                // Полное удаление (навсегда)
+                Tables\Actions\ForceDeleteAction::make()
                     ->visible(fn () => auth()->user()->hasRole('Super Admin')),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
+                        ->visible(fn () => auth()->user()->hasRole('Super Admin')),
+                    Tables\Actions\ForceDeleteBulkAction::make()
+                        ->visible(fn () => auth()->user()->hasRole('Super Admin')),
+                    Tables\Actions\RestoreBulkAction::make()
                         ->visible(fn () => auth()->user()->hasRole('Super Admin')),
                 ]),
             ]);
@@ -161,8 +157,7 @@ class UserResource extends Resource
     public static function getRelations(): array
     {
         return [
-            // Не забудь импортировать класс (VS Code подскажет)
-            UserResource\RelationManagers\OrdersRelationManager::class,
+            RelationManagers\OrdersRelationManager::class,
         ];
     }
 
