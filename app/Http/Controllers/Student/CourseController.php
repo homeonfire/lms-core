@@ -43,33 +43,47 @@ class CourseController extends Controller
             ->with(['tariffs' => fn($q) => $q->orderBy('price')])
             ->firstOrFail();
 
-        // Программа обучения (Syllabus)
-        // ВАЖНО: Подгружаем тарифы для каждого элемента структуры
         $syllabus = $course->modules()
             ->whereNull('parent_id')
             ->orderBy('sort_order')
             ->with([
-                'tariffs', // Тарифы самого модуля
-                'lessons' => fn($q) => $q->orderBy('sort_order')->with('tariffs'), // Тарифы уроков
+                'lessons' => fn($q) => $q->orderBy('sort_order'), 
                 'children' => fn($q) => $q->orderBy('sort_order')
-                    ->with(['tariffs', 'lessons' => fn($q2) => $q2->orderBy('sort_order')->with('tariffs')]) // Тарифы подмодулей и их уроков
+                    ->with(['lessons' => fn($q2) => $q2->orderBy('sort_order')])
             ])
             ->get();
 
-        // Проверяем, купил ли уже пользователь этот курс
         $userOrder = null;
+        
+        // По умолчанию берем ссылки курса
+        $telegramLinks = [
+            'channel' => $course->telegram_channel_link,
+            'chat' => $course->telegram_chat_link,
+        ];
+
         if (Auth::check()) {
             $userOrder = Order::where('user_id', Auth::id())
                 ->where('course_id', $course->id)
                 ->where('status', 'paid')
                 ->with('tariff')
                 ->first();
+
+            // Если есть заказ и тариф, пробуем взять персональные ссылки
+            if ($userOrder && $userOrder->tariff) {
+                if (!empty($userOrder->tariff->telegram_channel_link)) {
+                    $telegramLinks['channel'] = $userOrder->tariff->telegram_channel_link;
+                }
+                if (!empty($userOrder->tariff->telegram_chat_link)) {
+                    $telegramLinks['chat'] = $userOrder->tariff->telegram_chat_link;
+                }
+            }
         }
 
         return Inertia::render('Courses/Show', [
             'course' => $course,
             'syllabus' => $syllabus,
             'userOrder' => $userOrder,
+            'telegramLinks' => $telegramLinks, // <-- Передаем на фронт
         ]);
     }
 

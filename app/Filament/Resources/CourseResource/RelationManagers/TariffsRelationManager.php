@@ -27,6 +27,17 @@ class TariffsRelationManager extends RelationManager
                     ->numeric()
                     ->prefix('₽')
                     ->required(),
+
+                // === НОВЫЕ ПОЛЯ ===
+                Forms\Components\Section::make('Telegram для этого тарифа')
+                    ->schema([
+                        Forms\Components\TextInput::make('telegram_channel_link')
+                            ->label('Ссылка на Канал')
+                            ->url(),
+                        Forms\Components\TextInput::make('telegram_chat_link')
+                            ->label('Ссылка на Чат')
+                            ->url(),
+                    ])->columns(2),
             ]);
     }
 

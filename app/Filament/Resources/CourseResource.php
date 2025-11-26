@@ -53,6 +53,18 @@ class CourseResource extends Resource
                             ->searchable()
                             ->preload(),
 
+                        // === ВЕРНУЛИ ВЫБОР КУРАТОРОВ ===
+                        Forms\Components\Select::make('curators')
+                            ->label('Кураторы курса')
+                            ->relationship('curators', 'name', function ($query) {
+                                // Показываем только пользователей с ролью Curator
+                                return $query->role('Curator');
+                            })
+                            ->multiple()
+                            ->preload()
+                            ->searchable(),
+                        // ===============================
+
                         Forms\Components\TextInput::make('title')
                             ->label('Название курса')
                             ->required()
@@ -74,24 +86,20 @@ class CourseResource extends Resource
                 // Секция: Медиа и Настройки
                 Forms\Components\Section::make('Настройки и Цена')
                     ->schema([
-                        // === НОВОЕ ПОЛЕ: ПУБЛИЧНАЯ ССЫЛКА ===
+                        // Поле публичной ссылки
                         Forms\Components\TextInput::make('public_link')
                             ->label('Публичная ссылка (Лендинг)')
-                            // Генерируем ссылку на лету
                             ->formatStateUsing(fn (?Course $record) => $record ? route('public.course.show', $record->slug) : null)
-                            ->disabled() // Нельзя редактировать
-                            ->dehydrated(false) // Не сохранять в БД
+                            ->disabled()
+                            ->dehydrated(false)
                             ->columnSpanFull()
                             ->suffixAction(
-                                // Кнопка "Открыть" прямо в поле
                                 \Filament\Forms\Components\Actions\Action::make('open')
                                     ->icon('heroicon-m-arrow-top-right-on-square')
                                     ->url(fn (?Course $record) => $record ? route('public.course.show', $record->slug) : null)
                                     ->openUrlInNewTab()
                             )
-                            // Показывать только если курс уже создан
                             ->visible(fn (?Course $record) => $record !== null),
-                        // =======================================
 
                         Forms\Components\FileUpload::make('thumbnail_url')
                             ->label('Обложка курса')
@@ -119,6 +127,22 @@ class CourseResource extends Resource
                             ->offColor('danger')
                             ->default(false),
                     ])->columns(2),
+
+                    Forms\Components\Section::make('Сообщество (Telegram)')
+                    ->description('Общие ссылки (используются, если у тарифа нет своих ссылок)')
+                    ->schema([
+                        Forms\Components\TextInput::make('telegram_channel_link')
+                            ->label('Канал курса')
+                            ->prefix('https://t.me/')
+                            ->url()
+                            ->placeholder('https://t.me/channel_name'),
+                            
+                        Forms\Components\TextInput::make('telegram_chat_link')
+                            ->label('Чат участников')
+                            ->prefix('https://t.me/')
+                            ->url()
+                            ->placeholder('https://t.me/+InviteLink...'),
+                    ])->columns(2)->collapsed(),
             ]);
     }
 
@@ -161,14 +185,12 @@ class CourseResource extends Resource
                     ->label('Только опубликованные'),
             ])
             ->actions([
-                // === НОВАЯ КНОПКА В ТАБЛИЦЕ ===
                 Tables\Actions\Action::make('public_link')
                     ->label('Лендинг')
                     ->icon('heroicon-o-globe-alt')
                     ->url(fn (Course $record) => route('public.course.show', $record->slug))
                     ->openUrlInNewTab()
-                    ->color('gray'), // Нейтральный цвет
-                // ==============================
+                    ->color('gray'),
 
                 Tables\Actions\EditAction::make(),
             ])

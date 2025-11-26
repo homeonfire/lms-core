@@ -100,13 +100,13 @@ defineProps({ courses: Array });
 
                         <div class="mt-6">
                             <Link 
-                                :href="route('learning.lesson', course.slug)" 
+                                :href="route('courses.show', course.slug)" 
                                 class="block w-full text-center py-2 rounded-lg font-semibold transition-colors border"
                                 :class="course.progress === 100 
                                     ? 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' 
                                     : 'bg-indigo-600 text-white border-transparent hover:bg-indigo-700 shadow-md shadow-indigo-200'"
                             >
-                                {{ course.progress === 100 ? 'Посмотреть снова' : 'Продолжить' }}
+                                {{ course.progress === 100 ? 'Страница курса' : 'Продолжить обучение' }}
                             </Link>
                         </div>
                     </div>
