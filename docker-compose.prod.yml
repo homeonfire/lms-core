@@ -24,9 +24,16 @@ services:
             - pgsql
             - redis
 
-    # 2. Воркер (УБРАЛИ build, ОСТАВИЛИ image)
+    # 2. Воркер
     queue:
-        image: sail-8.3/app
+        # ВЕРНУЛИ BUILD, ЧТОБЫ DOCKER ЗНАЛ, ОТКУДА БРАТЬ ОБРАЗ
+        build:
+            context: ./docker/8.3
+            dockerfile: Dockerfile
+            args:
+                WWWGROUP: 1000
+        # ИЗМЕНИЛИ ИМЯ ОБРАЗА, ЧТОБЫ НЕ БЫЛО КОНФЛИКТА С laravel.test
+        image: sail-8.3/queue
         restart: unless-stopped
         command: php artisan queue:work --tries=3 --timeout=90
         environment:
@@ -38,7 +45,7 @@ services:
         networks:
             - sail
         depends_on:
-            - laravel.test # Ждем, пока основное приложение соберется
+            - laravel.test
             - pgsql
             - redis
 
