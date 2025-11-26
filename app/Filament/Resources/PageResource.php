@@ -19,6 +19,9 @@ class PageResource extends Resource
     protected static ?string $navigationGroup = 'Настройки системы';
     protected static ?string $navigationLabel = 'Статичные страницы';
 
+    protected static ?string $modelLabel = 'Статичную страницу';
+protected static ?string $pluralModelLabel = 'Статичные страницы';
+
     public static function form(Form $form): Form
     {
         return $form

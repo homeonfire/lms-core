@@ -19,6 +19,9 @@ class LessonResource extends Resource
     protected static ?string $navigationGroup = 'Управление контентом';
     protected static ?string $navigationLabel = 'Уроки';
 
+    protected static ?string $modelLabel = 'Урок';
+protected static ?string $pluralModelLabel = 'Уроки';
+
     // Глобальный фильтр (Scope)
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {

@@ -19,6 +19,9 @@ class HomeworkSubmissionResource extends Resource
     protected static ?string $navigationGroup = 'Работа со студентами'; // Новая группа
     protected static ?string $navigationLabel = 'Проверка ДЗ';
 
+    protected static ?string $modelLabel = 'Проверка ДЗ';
+protected static ?string $pluralModelLabel = 'Проверка ДЗ';
+
     public static function form(Form $form): Form
     {
         return $form

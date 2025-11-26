@@ -21,6 +21,9 @@ class OrderResource extends Resource
     protected static ?string $navigationGroup = 'Продажи';
     protected static ?string $navigationLabel = 'Заказы';
 
+    protected static ?string $modelLabel = 'Заказ';
+protected static ?string $pluralModelLabel = 'Заказы';
+
     // Бейджик: показываем количество новых заказов
     public static function getNavigationBadge(): ?string
     {

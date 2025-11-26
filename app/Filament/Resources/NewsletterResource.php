@@ -21,6 +21,9 @@ class NewsletterResource extends Resource
     protected static ?string $navigationGroup = 'Маркетинг';
     protected static ?string $navigationLabel = 'Рассылки';
 
+    protected static ?string $modelLabel = 'Рассылку';
+protected static ?string $pluralModelLabel = 'Рассылки';
+
     public static function form(Form $form): Form
     {
         return $form

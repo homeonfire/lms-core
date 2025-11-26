@@ -21,6 +21,11 @@ class CourseResource extends Resource
 
     protected static ?string $navigationGroup = 'Управление контентом';
 
+    // === ДОБАВИТЬ ВОТ ЭТО ===
+    protected static ?string $modelLabel = 'Курс'; // Ед. число (для кнопки "Создать Курс")
+    protected static ?string $pluralModelLabel = 'Курсы'; // Мн. число (для заголовка)
+    protected static ?string $navigationLabel = 'Курсы'; // В меню слева
+
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {
         $query = parent::getEloquentQuery();

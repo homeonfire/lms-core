@@ -18,6 +18,9 @@ class HomeworkResource extends Resource
     protected static ?string $navigationGroup = 'Управление контентом';
     protected static ?string $navigationLabel = 'Домашние задания';
 
+    protected static ?string $modelLabel = 'Домашнее задание';
+protected static ?string $pluralModelLabel = 'Домашние задания';
+
     public static function form(Form $form): Form
     {
         return $form

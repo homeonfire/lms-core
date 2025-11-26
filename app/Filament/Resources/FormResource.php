@@ -20,6 +20,9 @@ class FormResource extends Resource
     protected static ?string $navigationGroup = 'Маркетинг';
     protected static ?string $navigationLabel = 'Анкеты и Формы';
 
+    protected static ?string $modelLabel = 'Анкету/форму';
+protected static ?string $pluralModelLabel = 'Анкеты и формы';
+
     public static function form(Form $form): Form
     {
         return $form

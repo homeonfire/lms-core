@@ -22,6 +22,9 @@ class UserResource extends Resource
     protected static ?string $navigationGroup = 'Настройки системы';
     protected static ?string $navigationLabel = 'Пользователи';
 
+    protected static ?string $modelLabel = 'Пользователь';
+protected static ?string $pluralModelLabel = 'Пользователи';
+
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery()
