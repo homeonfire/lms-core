@@ -12,6 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
+
 class OrderResource extends Resource
 {
     protected static ?string $model = Order::class;

@@ -8,9 +8,12 @@ use App\Models\Order;
 use App\Models\Tariff;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Traits\HasUtmCollection; 
 
 class OrderController extends Controller
 {
+    use HasUtmCollection; 
+    
     public function enroll(Request $request, Course $course)
     {
         $user = Auth::user();
