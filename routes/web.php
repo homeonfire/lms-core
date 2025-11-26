@@ -17,6 +17,10 @@ Route::get('/c/{slug}/exists', [\App\Http\Controllers\Public\PublicCourseControl
 // Статичные страницы (Оферта, Политика)
 Route::get('/p/{slug}', [\App\Http\Controllers\Public\PageController::class, 'show'])->name('public.page');
 
+    // Анкеты
+Route::get('/f/{slug}', [\App\Http\Controllers\Public\FormController::class, 'show'])->name('public.form.show');
+Route::post('/f/{form}', [\App\Http\Controllers\Public\FormController::class, 'submit'])->name('public.form.submit');
+
 // Обработка быстрого заказа
 Route::post('/c/{course}/fast-order', [\App\Http\Controllers\Public\FastOrderController::class, 'store'])->name('public.course.fast_order');
 // Группа маршрутов для авторизованных студентов
@@ -57,9 +61,7 @@ Route::get('/courses/{course:slug}/order-exists', [\App\Http\Controllers\Student
 Route::post('/learning/test/{block}/check', [\App\Http\Controllers\Student\LearningController::class, 'checkTest'])
     ->name('learning.test.check');
 
-    // Анкеты
-Route::get('/f/{slug}', [\App\Http\Controllers\Public\FormController::class, 'show'])->name('public.form.show');
-Route::post('/f/{form}', [\App\Http\Controllers\Public\FormController::class, 'submit'])->name('public.form.submit');
+
 
 // Dashboard теперь пусть ведет на My Learning
 Route::get('/dashboard', function () {
