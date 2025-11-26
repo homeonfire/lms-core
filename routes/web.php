@@ -57,6 +57,10 @@ Route::get('/courses/{course:slug}/order-exists', [\App\Http\Controllers\Student
 Route::post('/learning/test/{block}/check', [\App\Http\Controllers\Student\LearningController::class, 'checkTest'])
     ->name('learning.test.check');
 
+    // Анкеты
+Route::get('/f/{slug}', [\App\Http\Controllers\Public\FormController::class, 'show'])->name('public.form.show');
+Route::post('/f/{form}', [\App\Http\Controllers\Public\FormController::class, 'submit'])->name('public.form.submit');
+
 // Dashboard теперь пусть ведет на My Learning
 Route::get('/dashboard', function () {
     return redirect()->route('my.learning');
