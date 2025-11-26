@@ -12,7 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope; // <--- Добавили импорт
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class UserResource extends Resource
 {
@@ -24,7 +24,6 @@ class UserResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        // Добавляем withoutGlobalScopes, чтобы видеть мягко удаленных при фильтрации
         $query = parent::getEloquentQuery()
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
@@ -48,6 +47,7 @@ class UserResource extends Resource
     {
         return $form
             ->schema([
+                // === ОСНОВНЫЕ ДАННЫЕ ===
                 Forms\Components\Section::make('Данные пользователя')
                     ->schema([
                         Forms\Components\TextInput::make('name')
@@ -83,6 +83,21 @@ class UserResource extends Resource
                             ->default(true)
                             ->visible(fn () => auth()->user()->hasRole('Super Admin')),
                     ])->columns(2),
+
+                // === НОВАЯ СЕКЦИЯ: UTM МЕТКИ ===
+                Forms\Components\Section::make('Маркетинг (UTM метки)')
+                    ->description('Источник, откуда пользователь пришел при регистрации')
+                    ->schema([
+                        Forms\Components\KeyValue::make('utm_data')
+                            ->label('Параметры перехода')
+                            ->keyLabel('Метка')
+                            ->valueLabel('Значение')
+                            ->disabled() // Запрещаем редактировать историю
+                            ->columnSpanFull(),
+                    ])
+                    ->collapsed() // Свернуто по умолчанию
+                    // Показываем, только если метки есть (чтобы не мозолило глаза)
+                    ->visible(fn (?User $record) => $record && !empty($record->utm_data)),
             ]);
     }
 
@@ -113,6 +128,15 @@ class UserResource extends Resource
                         default => 'gray',
                     }),
 
+                // Можно добавить индикатор UTM в таблицу (опционально)
+                Tables\Columns\IconColumn::make('utm_data')
+                    ->label('UTM')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-chart-bar')
+                    ->falseIcon('')
+                    ->getStateUsing(fn (User $record) => !empty($record->utm_data))
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Регистрация')
                     ->dateTime()
@@ -124,21 +148,17 @@ class UserResource extends Resource
                     ->label('Роль')
                     ->relationship('roles', 'name'),
                 
-                // === НОВЫЙ ФИЛЬТР: КОРЗИНА ===
                 Tables\Filters\TrashedFilter::make(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
                 
-                // Обычное удаление (Мягкое)
                 Tables\Actions\DeleteAction::make()
                     ->visible(fn (User $record) => auth()->user()->hasRole('Super Admin') && $record->id !== auth()->id()),
                 
-                // Восстановление
                 Tables\Actions\RestoreAction::make()
                     ->visible(fn () => auth()->user()->hasRole('Super Admin')),
 
-                // Полное удаление (навсегда)
                 Tables\Actions\ForceDeleteAction::make()
                     ->visible(fn () => auth()->user()->hasRole('Super Admin')),
             ])
