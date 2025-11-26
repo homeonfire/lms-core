@@ -1,25 +1,33 @@
 #!/bin/bash
 set -e
 
-echo "🚀 Starting Deployment..."
+echo "🚀 STARTING DEPLOYMENT..."
 
-# 1. Скачиваем свежий код
+# 1. Скачиваем код
 git pull origin main
 
-# 2. Собираем и запускаем контейнеры
-echo "🐳 Building Containers..."
+# 2. Устанавливаем PHP зависимости (Временный контейнер, чтобы появилась папка vendor)
+# Используем тот же образ PHP, что и в проекте
+echo "📦 Installing Composer Dependencies..."
+docker run --rm \
+    -u "$(id -u):$(id -g)" \
+    -v "$(pwd):/var/www/html" \
+    -w /var/www/html \
+    laravelsail/php83-composer:latest \
+    composer install --ignore-platform-reqs --no-dev
+
+# 3. Запускаем боевые контейнеры
+echo "🐳 Starting Containers..."
 docker compose -f docker-compose.prod.yml up -d --build
 
-# 3. Устанавливаем PHP зависимости
-echo "📦 Installing PHP Dependencies..."
-docker compose -f docker-compose.prod.yml exec -T laravel.test composer install --no-dev --optimize-autoloader
+# 4. Ждем старта БД (на всякий случай)
+sleep 5
 
-# 4. Накатываем миграции БД
-echo "🗄️ Migrating Database..."
+# 5. Миграции и Роли
+echo "🗄️ Database Migrations..."
 docker compose -f docker-compose.prod.yml exec -T laravel.test php artisan migrate --force
 
-# 5. ГАРАНТИЯ РОЛЕЙ (Создаем роли, если база чистая)
-echo "👮‍♂️ Checking Roles..."
+echo "👮‍♂️ Ensuring Roles exist..."
 docker compose -f docker-compose.prod.yml exec -T laravel.test php artisan tinker --execute="
 \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'Super Admin']);
 \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'Teacher']);
@@ -28,23 +36,22 @@ docker compose -f docker-compose.prod.yml exec -T laravel.test php artisan tinke
 \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'Curator']);
 "
 
-# 6. Сборка фронтенда (с фиксом версий)
+# 6. Фронтенд (Фикс версий)
 echo "🎨 Building Frontend..."
 docker compose -f docker-compose.prod.yml exec -T laravel.test npm install --legacy-peer-deps
 docker compose -f docker-compose.prod.yml exec -T laravel.test npm run build
 
-# 7. Права доступа и Кэш
-echo "🧹 Fixing Permissions & Cache..."
+# 7. Лечим права, ссылки и кэш
+echo "🧹 Cleaning up..."
 docker compose -f docker-compose.prod.yml exec -T -u root laravel.test chmod -R 777 storage bootstrap/cache
+docker compose -f docker-compose.prod.yml exec -T laravel.test rm -rf public/storage
+docker compose -f docker-compose.prod.yml exec -T laravel.test php artisan storage:link
 docker compose -f docker-compose.prod.yml exec -T laravel.test php artisan optimize:clear
 docker compose -f docker-compose.prod.yml exec -T laravel.test php artisan config:cache
-docker compose -f docker-compose.prod.yml exec -T laravel.test php artisan route:cache
-docker compose -f docker-compose.prod.yml exec -T laravel.test php artisan view:cache
-docker compose -f docker-compose.prod.yml exec -T laravel.test php artisan storage:link
+docker compose -f docker-compose.prod.yml exec -T laravel.test php artisan view:clear
 
-# 8. Перезапуск очередей (чтобы подхватить новый код)
+# 8. Перезапуск очередей
 echo "🔄 Restarting Queues..."
-docker compose -f docker-compose.prod.yml exec -T laravel.test php artisan queue:restart
 docker compose -f docker-compose.prod.yml exec -T queue php artisan queue:restart
 
-echo "✅ DEPLOY SUCCESSFUL! Site is ready."
+echo "✅ DEPLOY SUCCESSFUL!"
