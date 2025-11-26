@@ -1,8 +1,8 @@
 services:
-    # 1. WEB APP
+    # 1. Приложение (ЗДЕСЬ ОСТАВЛЯЕМ СБОРКУ)
     laravel.test:
         build:
-            context: ./docker/8.3 # <--- ПРОВЕРЬ, ЧТО ПАПКА НАЗЫВАЕТСЯ ТАК ЖЕ
+            context: ./docker/8.3
             dockerfile: Dockerfile
             args:
                 WWWGROUP: 1000
@@ -24,13 +24,8 @@ services:
             - pgsql
             - redis
 
-    # 2. QUEUE WORKER
+    # 2. Воркер (УБРАЛИ build, ОСТАВИЛИ image)
     queue:
-        build:
-            context: ./docker/8.3 # <--- ТА ЖЕ ВЕРСИЯ
-            dockerfile: Dockerfile
-            args:
-                WWWGROUP: 1000
         image: sail-8.3/app
         restart: unless-stopped
         command: php artisan queue:work --tries=3 --timeout=90
@@ -43,10 +38,11 @@ services:
         networks:
             - sail
         depends_on:
+            - laravel.test # Ждем, пока основное приложение соберется
             - pgsql
             - redis
 
-    # 3. DATABASE
+    # 3. База данных
     pgsql:
         image: 'postgres:15'
         ports:
@@ -65,7 +61,7 @@ services:
             retries: 3
             timeout: 5s
 
-    # 4. REDIS
+    # 4. Redis
     redis:
         image: 'redis:alpine'
         ports:
@@ -79,7 +75,7 @@ services:
             retries: 3
             timeout: 5s
 
-    # 5. PROXY (Вход)
+    # 5. Прокси
     nginx-proxy:
         image: nginxproxy/nginx-proxy
         container_name: nginx-proxy
@@ -94,7 +90,7 @@ services:
         networks:
             - sail
 
-    # 6. SSL COMPANION
+    # 6. SSL
     acme-companion:
         image: nginxproxy/acme-companion
         environment:
