@@ -1,59 +1,210 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# 🚀 LMS Core: Инструкция по установке (Production)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Эта инструкция описывает процесс развертывания платформы на чистом сервере (VPS) под управлением **Ubuntu 22.04 / 24.04** с использованием **Docker** и **Docker Compose** для Production среды.
 
-## About Laravel
+## 📋 Требования
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+  * **OS:** Ubuntu 22.04 LTS или новее.
+  * **CPU/RAM:** Минимум **2 vCPU / 2 GB RAM** (для комфортной работы Docker).
+  * **Домен:** Привязанный к IP-адресу сервера (**A-запись**).
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+-----
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## 🛠 Этап 1: Подготовка сервера
 
-## Learning Laravel
+Зайдите на сервер по SSH (`ssh root@ваш-ip`) и выполните следующие команды по очереди.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+### 1\. Установка Docker и Git
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Мы используем официальный скрипт Docker для установки самой свежей версии.
 
-## Laravel Sponsors
+```bash
+# Обновляем списки пакетов
+apt-get update
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+# Устанавливаем Git и Curl
+apt-get install -y git curl
 
-### Premium Partners
+# Скачиваем скрипт установки Docker
+curl -fsSL https://get.docker.com -o get-docker.sh
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+# Запускаем установку
+sh get-docker.sh
 
-## Contributing
+# Удаляем скрипт установки
+rm get-docker.sh
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+# Проверяем установку (должно вывести версию Docker)
+docker --version
+```
 
-## Code of Conduct
+### 2\. Клонирование проекта
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+# Клонируем репозиторий (замените ссылку на вашу)
+git clone https://github.com/homeonfire/lms-core.git
 
-## Security Vulnerabilities
+# Переходим в папку проекта
+cd lms-core
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+> **Примечание:** Если репозиторий приватный, вам потребуется ввести логин GitHub и **Personal Access Token** вместо пароля.
 
-## License
+-----
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## ⚙️ Этап 2: Конфигурация (.env)
+
+Создадим файл окружения с настройками для продакшена.
+
+```bash
+# Копируем пример
+cp .env.example .env
+
+# Открываем редактор
+nano .env
+```
+
+ОБЯЗАТЕЛЬНО измените/добавьте следующие параметры:
+
+```ini
+APP_NAME="Название школы"
+APP_ENV=production
+APP_KEY=
+APP_DEBUG=false
+APP_URL=https://domain
+
+# === НАСТРОЙКИ ДЛЯ DOCKER И SSL ===
+# Эти переменные используются в docker-compose.prod.yml
+APP_DOMAIN=domain
+App_EMAIL_ADMIN=admin@domain
+WWWGROUP=1000
+WWWUSER=1000
+
+LOG_CHANNEL=stack
+LOG_DEPRECATIONS_CHANNEL=null
+LOG_LEVEL=error
+
+# === БАЗА ДАННЫХ (PostgreSQL) ===
+# Хост 'pgsql' соответствует имени сервиса в docker-compose.prod.yml
+DB_CONNECTION=pgsql
+DB_HOST=pgsql
+DB_PORT=5432
+DB_DATABASE=lms_prod_db
+DB_USERNAME=lms_prod_user
+DB_PASSWORD=Xy9mZ2SecureLMSPass2025
+
+# === ДРАЙВЕРЫ И ОЧЕРЕДИ ===
+BROADCAST_CONNECTION=log
+FILESYSTEM_DISK=local
+# Очереди храним в базе (у нас создана таблица jobs)
+QUEUE_CONNECTION=database
+
+# Кэш и сессии лучше хранить в Redis для скорости
+CACHE_STORE=redis
+SESSION_DRIVER=redis
+SESSION_LIFETIME=120
+
+# === REDIS ===
+# Хост 'redis' соответствует имени сервиса
+REDIS_CLIENT=phpredis
+REDIS_HOST=redis
+REDIS_PASSWORD=null
+REDIS_PORT=6379
+
+# === ПОЧТА (SMTP) ===
+# ВАЖНО: Сюда нужно вставить реальные данные от твоего почтового провайдера
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.beget.com
+MAIL_PORT=465
+MAIL_USERNAME=info@domain
+MAIL_PASSWORD=smtp_password
+MAIL_ENCRYPTION=ssl
+MAIL_FROM_ADDRESS="info@domain"
+MAIL_FROM_NAME="${APP_NAME}"
+
+# === ФРОНТЕНД ===
+VITE_APP_NAME="${APP_NAME}"
+
+APP_LOCALE=ru
+APP_FALLBACK_LOCALE=ru
+APP_FAKER_LOCALE=ru_RU
+```
+
+> **Сохранение:** В редакторе `nano` нажмите **Ctrl + O**, затем **Enter**, и **Ctrl + X** для выхода.
+
+-----
+
+## 🚀 Этап 3: Запуск установки
+
+Мы подготовили скрипт `deploy.sh`, который автоматически собирает контейнеры, устанавливает зависимости и запускает проект.
+
+```bash
+# Даем права на запуск
+chmod +x deploy.sh
+
+# Запускаем
+./deploy.sh
+```
+
+Процесс займет **3-5 минут**. Дождитесь сообщения `✅ DEPLOY SUCCESSFUL!`.
+
+-----
+
+## 🔧 Этап 4: Финальная настройка (Один раз)
+
+Эти команды нужно выполнить только при самой первой установке на чистый сервер.
+
+### 1\. Генерация ключа шифрования
+
+Без этого сайт будет выдавать ошибку 500.
+
+```bash
+docker compose -f docker-compose.prod.yml exec laravel.test php artisan key:generate
+docker compose -f docker-compose.prod.yml exec laravel.test php artisan config:clear
+```
+
+### 2\. Создание Супер-Админа
+
+База данных чистая, нужно создать первого пользователя.
+
+```bash
+# Заходим в консоль Tinker
+docker compose -f docker-compose.prod.yml exec laravel.test php artisan tinker
+```
+
+Вставьте этот код (замените `email` на свой):
+
+```php
+$u = \App\Models\User::create([
+    'name' => 'Boss',
+    'email' => 'i@pochta',
+    'password' => bcrypt('password') // Пароль: password
+]);
+$u->assignRole('Super Admin');
+exit
+```
+
+-----
+
+## ✅ Готово\!
+
+Теперь проект доступен по адресу: `https://domain`
+Админка: `https://domain/admin`
+
+  * **Логин:** `i@pochta`
+  * **Пароль:** `password`
+
+-----
+
+## 🔄 Как обновлять проект?
+
+Когда автор внес изменения в код и отправил их в Git, на сервере для обновления нужно выполнить всего одну команду:
+
+```bash
+cd ~/lms-core
+./deploy.sh
+```
+
+<br>
+
+Вам нужна помощь с настройкой какого-либо из параметров в `.env` файле, например, с почтой или доменом?

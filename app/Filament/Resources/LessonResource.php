@@ -142,9 +142,19 @@ protected static ?string $pluralModelLabel = 'Уроки';
                             ->numeric()
                             ->default(15),
 
+                        // === НОВЫЕ ПОЛЯ ===
+                        Forms\Components\DateTimePicker::make('available_at')
+                            ->label('Дата открытия доступа')
+                            ->helperText('Если заполнено, урок будет виден в списке, но открыть его можно будет только после этой даты.'),
+
+                        Forms\Components\Toggle::make('is_published')
+                            ->label('Урок опубликован')
+                            ->default(true)
+                            ->helperText('Если выключено, урок виден в списке как "Скоро", но войти в него нельзя.'),
+                        
+                        // (Твой старый переключатель)
                         Forms\Components\Toggle::make('is_stop_lesson')
                             ->label('Стоп-урок')
-                            ->helperText('Студент не пройдет дальше, пока не сдаст ДЗ и Тесты')
                             ->default(false),
                     ])->columns(2),
 

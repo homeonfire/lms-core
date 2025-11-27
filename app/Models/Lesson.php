@@ -13,6 +13,8 @@ class Lesson extends Model
 
     protected $casts = [
         'is_stop_lesson' => 'boolean',
+        'is_published' => 'boolean',    // <--- Добавили
+        'available_at' => 'datetime',   // <--- Добавили
     ];
 
     // === СВЯЗИ ===

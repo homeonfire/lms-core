@@ -16,13 +16,12 @@ class LearningController extends Controller
     {
         $user = Auth::user();
 
-        // 1. Проверка заказа
+        // 1. Проверка заказа и прав
         $order = $course->orders()
             ->where('user_id', $user->id)
             ->where('status', 'paid')
             ->first();
 
-        // ПРИВИЛЕГИИ (Админ или Автор)
         $hasPrivilegedAccess = ($course->teacher_id === $user->id) || $user->hasRole('Super Admin');
 
         if (!$order && !$hasPrivilegedAccess) {
@@ -30,7 +29,7 @@ class LearningController extends Controller
                 ->with('error', 'Сначала нужно записаться на курс.');
         }
 
-        // 2. Загружаем полную структуру
+        // 2. Загружаем структуру курса
         $rawSyllabus = $course->modules()
             ->whereNull('parent_id')
             ->orderBy('sort_order')
@@ -44,133 +43,169 @@ class LearningController extends Controller
             ])
             ->get();
 
-        // 3. ФИЛЬТРАЦИЯ: Убираем всё недоступное
+        // 3. Настраиваем проверки
         $tariffId = $order?->tariff_id;
+        $now = now();
 
-        // Функция проверки прав (Helper)
-        $checkAccess = function($entity) use ($tariffId, $hasPrivilegedAccess) {
-            if ($hasPrivilegedAccess) return true; // Админ видит всё
-            if ($entity->tariffs->isEmpty()) return true; // Нет ограничений
-            if (!$tariffId) return false; // Есть ограничения, но нет тарифа
+        // Проверка тарифа (Если нет доступа — скрываем полностью)
+        $checkTariffAccess = function($entity) use ($tariffId, $hasPrivilegedAccess) {
+            if ($hasPrivilegedAccess) return true;
+            if ($entity->tariffs->isEmpty()) return true;
+            if (!$tariffId) return false;
             return $entity->tariffs->contains('id', $tariffId);
         };
 
-        // Фильтруем дерево
-        $syllabus = $rawSyllabus->filter(function ($module) use ($checkAccess) {
-            // Если сам модуль закрыт - убираем его целиком
-            if (!$checkAccess($module)) return false;
+        // Проверка времени (Если рано — блокируем, но показываем)
+        $checkTimeAccess = function($lesson) use ($now, $hasPrivilegedAccess) {
+            if ($hasPrivilegedAccess) return true;
+            
+            // Если урок выключен вручную
+            if (!$lesson->is_published) return false;
+            
+            // Если есть дата открытия и она в будущем
+            if ($lesson->available_at && $lesson->available_at > $now) return false;
+            
+            return true;
+        };
 
-            // Фильтруем уроки внутри модуля
-            $module->setRelation('lessons', $module->lessons->filter(function ($lesson) use ($checkAccess) {
-                return $checkAccess($lesson);
-            })->values());
+        // 4. Обработка дерева (Фильтрация + Маркировка)
+        $syllabus = $rawSyllabus->filter(function ($module) use ($checkTariffAccess, $checkTimeAccess) {
+            // Если модуль недоступен по тарифу - убираем
+            if (!$checkTariffAccess($module)) return false;
 
-            // Фильтруем подмодули
-            $module->setRelation('children', $module->children->filter(function ($child) use ($checkAccess) {
-                if (!$checkAccess($child)) return false;
+            // Обработка уроков модуля
+            $visibleLessons = $module->lessons->filter(function ($l) use ($checkTariffAccess, $checkTimeAccess) {
+                // 1. Тариф
+                if (!$checkTariffAccess($l)) return false;
+                
+                // 2. Время (ставим флаг)
+                $l->is_locked_by_date = !$checkTimeAccess($l);
+                
+                if ($l->is_locked_by_date) {
+                    if (!$l->is_published) {
+                        $l->locked_message = 'Скоро выйдет';
+                    } else {
+                        $l->locked_message = 'Откроется ' . $l->available_at->format('d.m H:i');
+                    }
+                }
+                return true; // Оставляем в списке (даже если закрыт по времени)
+            })->values();
+            $module->setRelation('lessons', $visibleLessons);
 
-                // Фильтруем уроки внутри подмодуля
-                $child->setRelation('lessons', $child->lessons->filter(function ($lesson) use ($checkAccess) {
-                    return $checkAccess($lesson);
-                })->values());
+            // Обработка подмодулей
+            $visibleChildren = $module->children->filter(function ($child) use ($checkTariffAccess, $checkTimeAccess) {
+                if (!$checkTariffAccess($child)) return false;
 
-                // Оставляем подмодуль, даже если в нем нет уроков (но сам он доступен)
+                $childLessons = $child->lessons->filter(function ($l) use ($checkTariffAccess, $checkTimeAccess) {
+                    if (!$checkTariffAccess($l)) return false;
+                    
+                    $l->is_locked_by_date = !$checkTimeAccess($l);
+                    if ($l->is_locked_by_date) {
+                        if (!$l->is_published) {
+                            $l->locked_message = 'Скоро выйдет';
+                        } else {
+                            $l->locked_message = 'Откроется ' . $l->available_at->format('d.m H:i');
+                        }
+                    }
+                    return true;
+                })->values();
+                $child->setRelation('lessons', $childLessons);
                 return true;
-            })->values());
+            })->values();
+            $module->setRelation('children', $visibleChildren);
 
             return true;
-        })->values(); // Сбрасываем ключи массива для JSON
+        })->values();
 
-        // 4. Собираем плоский список (теперь только из ДОСТУПНЫХ уроков)
-        $allLessons = collect();
+        // 5. Плоский список ВСЕХ ВИДИМЫХ уроков (включая закрытые по дате)
+        $allVisibleLessons = collect();
         foreach ($syllabus as $module) {
-            foreach ($module->lessons as $l) $allLessons->push($l);
+            foreach ($module->lessons as $l) $allVisibleLessons->push($l);
             foreach ($module->children as $child) {
-                foreach ($child->lessons as $l) $allLessons->push($l);
+                foreach ($child->lessons as $l) $allVisibleLessons->push($l);
             }
         }
 
-        // 5. Определяем текущий урок
+        // 6. Определяем текущий урок
         if ($lessonSlug) {
-            // Пытаемся найти урок в БД
-            // Важно: мы не можем просто взять firstOrFail, так как урок может существовать, но быть недоступным.
-            // Нам нужно проверить, есть ли он в нашем отфильтрованном списке $allLessons.
-            
-            $currentLesson = $allLessons->first(fn($l) => $l->slug === $lessonSlug);
+            $currentLesson = $allVisibleLessons->first(fn($l) => $l->slug === $lessonSlug);
 
             if (!$currentLesson) {
-                // Если урок существует в БД, но был отфильтрован - значит нет доступа
-                // Либо просто неверный URL
-                return redirect()->route('my.learning')->with('error', 'Урок недоступен или не существует.');
+                // Урока нет в списке (значит скрыт тарифом или не существует)
+                return redirect()->route('my.learning')->with('error', 'Урок недоступен.');
             }
 
-            // Важно: $currentLesson из коллекции не имеет подгруженных связей блоков и домашки.
-            // Нам нужно догрузить их.
-            $currentLesson->load(['blocks.testResults' => fn($q) => $q->where('user_id', $user->id)]);
-            $currentLesson->load(['homework']);
+            // Если пытаются зайти в урок, закрытый по времени
+            if ($currentLesson->is_locked_by_date) {
+                return redirect()->route('my.learning')->with('error', 'Этот урок пока закрыт: ' . $currentLesson->locked_message);
+            }
+
+            // Догружаем связи
+            $currentLesson->load([
+                'blocks.testResults' => fn($q) => $q->where('user_id', $user->id),
+                'homework',
+                'tariffs', 'module.tariffs'
+            ]);
 
         } else {
-            // Ищем ПЕРВЫЙ ДОСТУПНЫЙ
-            $currentLesson = $allLessons->first();
+            // Авто-поиск: ищем первый, который НЕ заблокирован по времени
+            $currentLesson = $allVisibleLessons->first(fn($l) => !$l->is_locked_by_date);
 
             if (!$currentLesson) {
-                return redirect()->route('my.learning')->with('error', 'В этом курсе пока нет уроков, доступных для вашего тарифа.');
+                return redirect()->route('my.learning')->with('error', 'Доступных уроков пока нет. Ожидайте открытия.');
             }
-            
             return redirect()->route('learning.lesson', [$course->slug, $currentLesson->slug]);
         }
 
-        // 6. Навигация
-        $currentIndex = $allLessons->search(fn($i) => $i->id === $currentLesson->id);
-        $prevLesson = ($currentIndex > 0) ? $allLessons->get($currentIndex - 1) : null;
+        // 7. Навигация (Кнопки)
+        // Находим индекс в общем списке
+        $currentIndex = $allVisibleLessons->search(fn($l) => $l->id === $currentLesson->id);
+        
+        // Ищем ПРЕДЫДУЩИЙ ОТКРЫТЫЙ урок (пропускаем закрытые по дате, если они есть сзади)
+        $prevLesson = null;
+        for ($i = $currentIndex - 1; $i >= 0; $i--) {
+            if (!$allVisibleLessons[$i]->is_locked_by_date) {
+                $prevLesson = $allVisibleLessons[$i];
+                break;
+            }
+        }
 
-        // 7. Логика "Можно ли завершить?"
+        // 8. Логика завершения (Тесты + ДЗ)
         $canComplete = true;
-
         if (!$hasPrivilegedAccess) {
-            // Тесты
             foreach ($currentLesson->blocks as $block) {
                 if ($block->type === 'quiz') {
                     $passed = $block->testResults->where('is_passed', true)->isNotEmpty();
-                    if (!$passed) {
-                        $canComplete = false;
-                        break;
-                    }
+                    if (!$passed) { $canComplete = false; break; }
                 }
             }
-            // ДЗ
-            $submission = null;
-            if ($currentLesson->homework) {
+            if ($currentLesson->is_stop_lesson && $currentLesson->homework?->is_required) {
                 $submission = $currentLesson->homework->submissions()
                     ->where('student_id', Auth::id())
                     ->first();
-
-                if ($currentLesson->is_stop_lesson && $currentLesson->homework->is_required) {
-                    if (!$submission || $submission->status !== 'approved') {
-                        $canComplete = false;
-                    }
+                if (!$submission || $submission->status !== 'approved') {
+                    $canComplete = false;
                 }
             }
-        } else {
-             // Для админа подгрузим submission для отображения
-             $submission = null;
-             if ($currentLesson->homework) {
-                $submission = $currentLesson->homework->submissions()->where('student_id', Auth::id())->first();
-             }
+        }
+
+        $submission = null;
+        if ($currentLesson->homework) {
+            $submission = $currentLesson->homework->submissions()->where('student_id', Auth::id())->first();
         }
 
         return Inertia::render('Learning/Show', [
             'course' => $course,
-            'syllabus' => $syllabus, // Отфильтрованное дерево
+            'syllabus' => $syllabus,
             'lesson' => $currentLesson,
             'homework' => $currentLesson->homework, 
             'submission' => $submission,
             'prevLessonUrl' => $prevLesson ? route('learning.lesson', [$course->slug, $prevLesson->slug]) : null,
             'canComplete' => $canComplete,
+            'isAdminView' => $hasPrivilegedAccess,
         ]);
     }
 
-    // AJAX проверка теста
     public function checkTest(Request $request, \App\Models\ContentBlock $block)
     {
         if ($block->type !== 'quiz') abort(404);
@@ -201,52 +236,62 @@ class LearningController extends Controller
         return back()->with($isPassed ? 'success' : 'error', $isPassed ? "Тест сдан! ($score%)" : "Не сдан ($score% из $minScore%)");
     }
 
-    // Завершение урока
     public function markAsComplete(Lesson $lesson)
     {
         $user = Auth::user();
         $user->lessons()->syncWithoutDetaching([$lesson->id => ['completed_at' => now()]]);
 
-        // Повторяем логику фильтрации, чтобы найти следующий ДОСТУПНЫЙ урок
+        // Повторяем логику поиска СЛЕДУЮЩЕГО ОТКРЫТОГО
         $course = $lesson->module->course;
         $order = $course->orders()->where('user_id', $user->id)->where('status', 'paid')->first();
         $hasPrivilegedAccess = ($course->teacher_id === $user->id) || $user->hasRole('Super Admin');
         $tariffId = $order?->tariff_id;
+        $now = now();
 
         $rawSyllabus = $course->modules()->whereNull('parent_id')->orderBy('sort_order')
             ->with(['tariffs', 'lessons.tariffs', 'lessons.module.tariffs', 'children.tariffs', 'children.lessons.tariffs'])
             ->get();
 
-        $checkAccess = function($entity) use ($tariffId, $hasPrivilegedAccess) {
+        // Хелперы (копируем логику)
+        $checkTariff = fn($e) => $hasPrivilegedAccess || $e->tariffs->isEmpty() || ($tariffId && $e->tariffs->contains('id', $tariffId));
+        
+        $checkTime = function($l) use ($now, $hasPrivilegedAccess) {
             if ($hasPrivilegedAccess) return true;
-            if ($entity->tariffs->isEmpty()) return true;
-            if (!$tariffId) return false;
-            return $entity->tariffs->contains('id', $tariffId);
+            if (!$l->is_published) return false;
+            if ($l->available_at && $l->available_at > $now) return false;
+            return true;
         };
 
-        $allLessons = collect();
-        
+        // Строим список видимых
+        $allVisibleLessons = collect();
         foreach ($rawSyllabus as $module) {
-            if (!$checkAccess($module)) continue;
-
+            if (!$checkTariff($module)) continue;
             foreach ($module->lessons as $l) {
-                if ($checkAccess($l)) $allLessons->push($l);
+                if ($checkTariff($l)) $allVisibleLessons->push($l);
             }
-            foreach ($module->children as $child) {
-                if (!$checkAccess($child)) continue;
-                foreach ($child->lessons as $l) {
-                    if ($checkAccess($l)) $allLessons->push($l);
+            foreach ($module->children as $ch) {
+                if (!$checkTariff($ch)) continue;
+                foreach ($ch->lessons as $l) {
+                    if ($checkTariff($l)) $allVisibleLessons->push($l);
                 }
             }
         }
 
-        $currentIndex = $allLessons->search(fn($i) => $i->id === $lesson->id);
-        $nextLesson = $allLessons->get($currentIndex + 1);
+        $currentIndex = $allVisibleLessons->search(fn($l) => $l->id === $lesson->id);
+        
+        // Ищем следующий НЕЗАБЛОКИРОВАННЫЙ ПО ВРЕМЕНИ
+        $nextLesson = null;
+        for ($i = $currentIndex + 1; $i < $allVisibleLessons->count(); $i++) {
+            if ($checkTime($allVisibleLessons[$i])) {
+                $nextLesson = $allVisibleLessons[$i];
+                break;
+            }
+        }
 
         if ($nextLesson) {
             return redirect()->route('learning.lesson', [$course->slug, $nextLesson->slug]);
         }
 
-        return redirect()->route('my.learning')->with('success', 'Курс завершен!');
+        return redirect()->route('my.learning')->with('success', 'Курс завершен (или следующие уроки пока закрыты).');
     }
 }

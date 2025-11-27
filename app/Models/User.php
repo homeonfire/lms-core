@@ -41,11 +41,12 @@ class User extends Authenticatable implements FilamentUser
     }
 
     // Настройка доступа в админку (Filament)
-    public function canAccessPanel(Panel $panel): bool
+  public function canAccessPanel(Panel $panel): bool
     {
-        // Пока пускаем всех, у кого есть email (для тестов). 
-        // Позже здесь будет проверка ролей: return $this->hasRole('admin');
-        return true; 
+        // Список ролей, которым можно в Админку
+        // Если у пользователя есть ХОТЯ БЫ ОДНА из этих ролей - пускаем.
+        // Даже если у него параллельно есть роль "Student".
+        return $this->hasAnyRole(['Super Admin', 'Teacher', 'Manager', 'Curator']);
     }
 
     // === СВЯЗИ ===

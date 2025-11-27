@@ -32,7 +32,8 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $request->user() ? $request->user()->load('roles') : null,
+                'roles' => $request->user() ? $request->user()->getRoleNames() : [],
             ],
             // ВОТ ЭТОГО БЛОКА СКОРЕЕ ВСЕГО НЕ ХВАТАЕТ:
             'flash' => [
