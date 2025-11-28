@@ -152,8 +152,9 @@ class LessonResource extends Resource
                                 Forms\Components\Select::make('type')
                                     ->label('Тип блока')
                                     ->options([
-                                        'text'      => 'Текст (HTML)',
-                                        'buttons'   => '🔗 Кнопки / Ссылки', // НОВЫЙ ТИП
+                                        'text'      => 'Текст (Rich Text)',
+                                        'audio'     => '🎧 Аудио / Подкаст', // <--- НОВЫЙ ТИП
+                                        'buttons'   => '🔗 Кнопки / Ссылки',
                                         'image'     => 'Изображение',
                                         'file'      => 'Файл для скачивания',
                                         'separator' => '--- Разделитель ---',
@@ -167,47 +168,43 @@ class LessonResource extends Resource
                                     ->live()
                                     ->required(),
                                 
-                                // --- ПОЛЯ ДЛЯ ТЕКСТА ---
+                                // --- ТЕКСТ ---
                                 Forms\Components\RichEditor::make('content.html')
                                     ->label('Текст')
                                     ->visible(fn (Forms\Get $get) => $get('type') === 'text')
                                     ->required(fn (Forms\Get $get) => $get('type') === 'text')
                                     ->columnSpanFull(),
 
-                                // --- ПОЛЯ ДЛЯ КНОПОК (НОВОЕ) ---
+                                // --- АУДИО (НОВОЕ ПОЛЕ) ---
+                                Forms\Components\FileUpload::make('content.audio_path')
+                                    ->label('Аудиофайл (MP3, WAV, M4A)')
+                                    ->directory('lesson-audio')
+                                    ->acceptedFileTypes(['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/ogg', 'audio/x-m4a'])
+                                    ->maxSize(51200) // 50MB
+                                    ->visible(fn (Forms\Get $get) => $get('type') === 'audio')
+                                    ->required(fn (Forms\Get $get) => $get('type') === 'audio')
+                                    ->columnSpanFull(),
+
+                                // --- КНОПКИ ---
                                 Forms\Components\Group::make()
                                     ->visible(fn (Forms\Get $get) => $get('type') === 'buttons')
                                     ->schema([
                                         Forms\Components\Repeater::make('content.buttons')
                                             ->label('Список кнопок')
                                             ->schema([
-                                                Forms\Components\TextInput::make('label')
-                                                    ->label('Текст на кнопке')
-                                                    ->required(),
-                                                Forms\Components\TextInput::make('url')
-                                                    ->label('Ссылка')
-                                                    ->url()
-                                                    ->required(),
+                                                Forms\Components\TextInput::make('label')->label('Текст')->required(),
+                                                Forms\Components\TextInput::make('url')->label('Ссылка')->url()->required(),
                                                 Forms\Components\Select::make('color')
                                                     ->label('Цвет')
                                                     ->options([
-                                                        'primary' => 'Синяя (Основная)',
-                                                        'success' => 'Зеленая',
-                                                        'danger' => 'Красная',
-                                                        'gray' => 'Серая',
+                                                        'primary' => 'Синяя', 'success' => 'Зеленая', 'danger' => 'Красная', 'gray' => 'Серая',
                                                     ])
-                                                    ->default('primary')
-                                                    ->required(),
-                                                Forms\Components\Toggle::make('is_blank')
-                                                    ->label('Открывать в новой вкладке')
-                                                    ->default(true),
-                                            ])
-                                            ->columns(2)
-                                            ->addActionLabel('Добавить кнопку')
-                                    ])
-                                    ->columnSpanFull(),
+                                                    ->default('primary')->required(),
+                                                Forms\Components\Toggle::make('is_blank')->label('Новая вкладка')->default(true),
+                                            ])->columns(2)->addActionLabel('Добавить кнопку')
+                                    ])->columnSpanFull(),
 
-                                // --- ПОЛЯ ДЛЯ ВИДЕО ---
+                                // --- ВИДЕО ---
                                 Forms\Components\TextInput::make('content.url')
                                     ->label(fn (Forms\Get $get) => match($get('type')) {
                                         'video_kinescope' => 'ID видео или Ссылка',
@@ -246,43 +243,33 @@ class LessonResource extends Resource
                                             ->schema([
                                                 Forms\Components\TextInput::make('content.min_score')
                                                     ->label('Минимальный % прохождения')
-                                                    ->numeric()
-                                                    ->default(70)
-                                                    ->minValue(1)
-                                                    ->maxValue(100)
-                                                    ->required(),
-
+                                                    ->numeric()->default(70)->required(),
                                                 Forms\Components\Repeater::make('content.questions')
                                                     ->label('Вопросы')
                                                     ->schema([
-                                                        Forms\Components\TextInput::make('question')
-                                                            ->label('Вопрос')
-                                                            ->required(),
-                                                        
+                                                        Forms\Components\TextInput::make('question')->required(),
                                                         Forms\Components\Repeater::make('answers')
                                                             ->label('Ответы')
                                                             ->schema([
-                                                                Forms\Components\TextInput::make('text')
-                                                                    ->label('Вариант ответа')
-                                                                    ->required(),
-                                                                Forms\Components\Toggle::make('is_correct')
-                                                                    ->label('Верный')
-                                                                    ->default(false),
-                                                            ])
-                                                            ->minItems(2)
-                                                            ->columns(2),
-                                                    ])
-                                                    ->itemLabel(fn (array $state): ?string => $state['question'] ?? null)
-                                                    ->collapsed(),
+                                                                Forms\Components\TextInput::make('text')->required(),
+                                                                Forms\Components\Toggle::make('is_correct')->default(false),
+                                                            ])->minItems(2)->columns(2),
+                                                    ])->collapsed(),
                                             ]),
                                     ]),
                             ])
                             ->collapsible()
                             ->itemLabel(fn (array $state): ?string => match($state['type'] ?? '') {
                                 'text' => 'Текст',
+                                'audio' => 'Аудио',
                                 'buttons' => 'Кнопки',
                                 'quiz' => 'Тест',
                                 'video_youtube' => 'YouTube',
+                                'video_rutube' => 'RuTube',
+                                'video_vk' => 'VK Video',
+                                'video_kinescope' => 'Kinescope',
+                                'image' => 'Картинка',
+                                'file' => 'Файл',
                                 default => 'Блок'
                             }),
                     ]),
@@ -293,50 +280,21 @@ class LessonResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('title')
-                    ->label('Название')
-                    ->searchable()
-                    ->sortable(),
-                
-                Tables\Columns\TextColumn::make('module.course.title')
-                    ->label('Курс')
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('module.title')
-                    ->label('Модуль'),
-
-                Tables\Columns\TextColumn::make('tariffs.name')
-                    ->label('Тарифы')
-                    ->badge()
-                    ->color('success')
-                    ->placeholder('Все'),
-
-                Tables\Columns\IconColumn::make('is_published')
-                    ->label('Вкл')
-                    ->boolean(),
-
-                Tables\Columns\TextColumn::make('blocks_count')
-                    ->counts('blocks')
-                    ->label('Блоков'),
+                Tables\Columns\TextColumn::make('title')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('module.course.title')->sortable(),
+                Tables\Columns\TextColumn::make('module.title'),
+                Tables\Columns\TextColumn::make('tariffs.name')->badge()->color('success')->placeholder('Все'),
+                Tables\Columns\IconColumn::make('is_published')->boolean(),
+                Tables\Columns\TextColumn::make('blocks_count')->counts('blocks'),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('course')
-                    ->relationship('module.course', 'title')
-                    ->label('Фильтр по курсу'),
+                Tables\Filters\SelectFilter::make('course')->relationship('module.course', 'title'),
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-            ]);
+            ->actions([Tables\Actions\EditAction::make()])
+            ->bulkActions([Tables\Actions\DeleteBulkAction::make()]);
     }
 
-    public static function getRelations(): array
-    {
-        return [];
-    }
-
+    public static function getRelations(): array { return []; }
     public static function getPages(): array
     {
         return [

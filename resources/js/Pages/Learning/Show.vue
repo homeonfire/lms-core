@@ -53,23 +53,11 @@ const nextLesson = () => {
 
                     <ul class="space-y-1 mb-2">
                         <li v-for="l in module.lessons" :key="l.id">
-                            <div 
-                                v-if="l.is_locked_by_date"
-                                class="flex flex-col px-3 py-2 rounded-md text-sm text-gray-400 bg-gray-50 border border-transparent cursor-not-allowed"
-                            >
-                                <div class="flex items-center">
-                                    <svg class="w-4 h-4 mr-2 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                                    <span>{{ l.title }}</span>
-                                </div>
+                            <div v-if="l.is_locked_by_date" class="flex flex-col px-3 py-2 rounded-md text-sm text-gray-400 bg-gray-50 border border-transparent cursor-not-allowed">
+                                <div class="flex items-center"><svg class="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg><span>{{ l.title }}</span></div>
                                 <span class="text-[10px] text-orange-500 ml-6 mt-1 font-medium uppercase tracking-wide">{{ l.locked_message }}</span>
                             </div>
-
-                            <Link 
-                                v-else
-                                :href="route('learning.lesson', [course.slug, l.slug])"
-                                class="flex items-center px-3 py-2 rounded-md text-sm transition-colors"
-                                :class="isCurrentLesson(l.id) ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-gray-700 hover:bg-gray-50'"
-                            >
+                            <Link v-else :href="route('learning.lesson', [course.slug, l.slug])" class="flex items-center px-3 py-2 rounded-md text-sm transition-colors" :class="isCurrentLesson(l.id) ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-gray-700 hover:bg-gray-50'">
                                 <svg v-if="isCurrentLesson(l.id)" class="w-4 h-4 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>
                                 <svg v-else class="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                 {{ l.title }}
@@ -109,37 +97,27 @@ const nextLesson = () => {
             <div class="flex-1 overflow-y-auto bg-gray-50 p-6 lg:p-10">
                 <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-100 p-8 min-h-full">
                     
-                    <!-- BLOCKS -->
                     <div class="space-y-8">
                         <div v-for="block in lesson.blocks" :key="block.id" class="content-block">
-                            
                             <!-- Text -->
                             <div v-if="block.type === 'text'" class="prose prose-indigo max-w-none" v-html="block.content.html"></div>
+                            
+                            <!-- AUDIO (НОВЫЙ БЛОК) -->
+                            <div v-else-if="block.type === 'audio'" class="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                <audio controls class="w-full focus:outline-none">
+                                    <source :src="'/storage/' + block.content.audio_path">
+                                    Ваш браузер не поддерживает аудио элемент.
+                                </audio>
+                            </div>
+
+                            <!-- Buttons -->
+                            <div v-else-if="block.type === 'buttons'" class="flex flex-wrap gap-4">
+                                <a v-for="(btn, index) in block.content.buttons" :key="index" :href="btn.url" :target="btn.is_blank ? '_blank' : '_self'" class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-bold rounded-xl shadow-sm text-white transition-all transform active:scale-95" :class="{'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200': btn.color === 'primary', 'bg-green-600 hover:bg-green-700 shadow-green-200': btn.color === 'success', 'bg-red-600 hover:bg-red-700 shadow-red-200': btn.color === 'danger', 'bg-gray-600 hover:bg-gray-700 shadow-gray-200': btn.color === 'gray'}">{{ btn.label }}</a>
+                            </div>
                             
                             <!-- Quiz -->
                             <div v-else-if="block.type === 'quiz'"><QuizBlock :block="block" :result="block.test_results?.[0]" /></div>
                             
-                            <!-- BUTTONS (НОВЫЙ БЛОК) -->
-                            <div v-else-if="block.type === 'buttons'" class="flex flex-wrap gap-4">
-                                <a 
-                                    v-for="(btn, index) in block.content.buttons"
-                                    :key="index"
-                                    :href="btn.url"
-                                    :target="btn.is_blank ? '_blank' : '_self'"
-                                    class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-bold rounded-xl shadow-sm text-white transition-all transform active:scale-95"
-                                    :class="{
-                                        'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200': btn.color === 'primary',
-                                        'bg-green-600 hover:bg-green-700 shadow-green-200': btn.color === 'success',
-                                        'bg-red-600 hover:bg-red-700 shadow-red-200': btn.color === 'danger',
-                                        'bg-gray-600 hover:bg-gray-700 shadow-gray-200': btn.color === 'gray',
-                                    }"
-                                >
-                                    {{ btn.label }}
-                                    <!-- Иконка внешней ссылки (если blank) -->
-                                    <svg v-if="btn.is_blank" class="w-4 h-4 ml-2 -mr-1 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-                                </a>
-                            </div>
-
                             <!-- Video -->
                             <div v-else-if="block.type.startsWith('video_')" class="rounded-xl overflow-hidden bg-black aspect-video shadow-lg">
                                 <iframe :src="block.content.url" class="w-full h-full" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>
