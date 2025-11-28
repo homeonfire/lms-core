@@ -13,27 +13,19 @@ class HomeworkController extends Controller
     public function submit(Request $request, Homework $homework)
     {
         // 1. Подготовка данных
-        // Мы берем присланные поля из формы (они лежат в массиве 'fields')
         $inputData = $request->input('fields', []);
         $submissionContent = [];
 
-        // 2. Перебираем настройки задания, чтобы понять, что сохранять
-        // (Мы доверяем настройкам из БД, а не тому, что прислал юзер)
+        // 2. Перебираем настройки задания
         foreach ($homework->submission_fields as $field) {
             $label = $field['label'];
             $type = $field['type'];
-            
-            // Ключ в запросе (Inertia отправляет formData вида fields[Название поля])
-            // Но PHP видит точки в ключах как вложенность, поэтому берем аккуратно.
-            // Laravel автоматически преобразует 'fields[Label]' в массив.
+            $isRequired = $field['required'] ?? false;
             
             // А. Обработка ФАЙЛОВ
             if ($type === 'file') {
-                // Проверяем, есть ли файл в запросе по ключу "fields.Название"
                 if ($request->hasFile("fields.$label")) {
                     $file = $request->file("fields.$label");
-                    
-                    // Сохраняем файл в папку 'homeworks' на диске 'public'
                     $path = $file->store('homeworks', 'public');
                     
                     $submissionContent[$label] = [
@@ -42,16 +34,33 @@ class HomeworkController extends Controller
                         'original_name' => $file->getClientOriginalName(),
                         'mime_type' => $file->getMimeType(),
                     ];
+                } elseif ($isRequired) {
+                    return back()->withErrors(["fields.$label" => "Поле $label обязательно для загрузки."]);
                 }
             } 
-            // Б. Обработка ТЕКСТА и ССЫЛОК
+            // Б. Обработка МАССИВОВ (Чекбоксы)
+            elseif ($type === 'checkboxes') {
+                $value = $inputData[$label] ?? [];
+                
+                if ($isRequired && empty($value)) {
+                    return back()->withErrors(["fields.$label" => "Выберите хотя бы один вариант."]);
+                }
+                
+                $submissionContent[$label] = $value; // Сохраняем массив как есть
+            }
+            // В. Обработка ТЕКСТА
             else {
-                // Просто берем текст из inputData
-                $submissionContent[$label] = $inputData[$label] ?? null;
+                $value = $inputData[$label] ?? null;
+                
+                if ($isRequired && empty($value)) {
+                    return back()->withErrors(["fields.$label" => "Поле $label обязательно."]);
+                }
+
+                $submissionContent[$label] = $value;
             }
         }
 
-        // 3. Сохраняем (или обновляем) запись в БД
+        // 3. Сохраняем
         $submission = HomeworkSubmission::updateOrCreate(
             [
                 'homework_id' => $homework->id,

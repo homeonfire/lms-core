@@ -6,21 +6,30 @@ const props = defineProps({
     submission: Object,
 });
 
+// Инициализируем форму
+// Важно: для чекбоксов нужно сразу создать пустой массив [], иначе v-model не сработает
+const initialFields = {};
+
+if (props.homework.submission_fields) {
+    props.homework.submission_fields.forEach(field => {
+        if (field.type === 'checkboxes') {
+            initialFields[field.label] = []; // Массив для множественного выбора
+        } else {
+            initialFields[field.label] = ''; // Строка для всего остального
+        }
+    });
+}
+
 const form = useForm({
-    fields: {}
+    fields: initialFields
 });
 
 const submit = () => {
     form.post(route('homework.submit', props.homework.id), {
         preserveScroll: true,
-        forceFormData: true, // <--- ВОТ ЭТА МАГИЧЕСКАЯ СТРОКА
+        forceFormData: true, // Обязательно для файлов
         onSuccess: () => {
             form.reset();
-        },
-        onError: (errors) => {
-            console.error('Ошибка валидации:', errors);
-            // Можно добавить алерт, чтобы понять, что что-то пошло не так
-            alert('Ошибка при отправке. Проверьте правильность заполнения полей.');
         }
     });
 };
@@ -42,6 +51,13 @@ const getStatusLabel = (status) => {
         default: return 'На проверке';
     }
 };
+
+// Хелпер для красивого вывода ответов (массивов) в блоке "Уже сдано"
+const formatAnswer = (val) => {
+    if (Array.isArray(val)) return val.join(', '); // Для чекбоксов
+    if (typeof val === 'object' && val !== null && val.type === 'file') return `Файл: ${val.original_name}`;
+    return val;
+};
 </script>
 
 <template>
@@ -53,17 +69,27 @@ const getStatusLabel = (status) => {
 
         <div class="prose prose-sm text-gray-600 mb-8 bg-gray-50 p-6 rounded-xl border border-gray-100" v-html="homework.description"></div>
 
+        <!-- 1. ЕСЛИ УЖЕ СДАНО -->
         <div v-if="submission" class="rounded-xl border p-6 mb-6" :class="getStatusColor(submission.status)">
             <div class="flex items-start justify-between">
                 <div>
                     <h3 class="font-bold text-lg mb-1">{{ getStatusLabel(submission.status) }}</h3>
-                    <p class="text-sm opacity-80">
+                    <p class="text-sm opacity-80 mb-4">
                         Сдано: {{ new Date(submission.created_at).toLocaleDateString() }}
                     </p>
+                    
+                    <!-- Показываем ответы пользователя -->
+                    <div class="space-y-2 text-sm bg-white/50 p-3 rounded-lg">
+                        <div v-for="(val, key) in submission.content" :key="key">
+                            <span class="font-bold">{{ key }}:</span> {{ formatAnswer(val) }}
+                        </div>
+                    </div>
+
                     <div v-if="submission.grade_percent" class="mt-3 inline-flex items-center px-3 py-1 bg-white/50 rounded-full text-sm font-bold">
                         Оценка: {{ submission.grade_percent }}%
                     </div>
                 </div>
+                
                 <div v-if="submission.status === 'approved'" class="bg-white rounded-full p-2">
                     <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                 </div>
@@ -81,13 +107,16 @@ const getStatusLabel = (status) => {
             </div>
         </div>
 
+        <!-- 2. ФОРМА ОТПРАВКИ -->
         <form v-else @submit.prevent="submit" class="space-y-6 bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+            
             <div v-for="(field, index) in homework.submission_fields" :key="index">
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                     {{ field.label }} 
                     <span v-if="field.required" class="text-red-500">*</span>
                 </label>
 
+                <!-- TEXTAREA -->
                 <div v-if="field.type === 'text'">
                     <textarea 
                         v-model="form.fields[field.label]" 
@@ -98,6 +127,7 @@ const getStatusLabel = (status) => {
                     ></textarea>
                 </div>
 
+                <!-- INPUT -->
                 <div v-else-if="['string', 'url'].includes(field.type)">
                     <input 
                         type="text" 
@@ -107,6 +137,32 @@ const getStatusLabel = (status) => {
                     >
                 </div>
 
+                <!-- CHECKBOXES (Новое) -->
+                <div v-else-if="field.type === 'checkboxes'" class="space-y-2">
+                    <div v-for="option in field.options" :key="option" class="flex items-center">
+                        <input 
+                            type="checkbox" 
+                            :value="option"
+                            v-model="form.fields[field.label]"
+                            class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
+                        >
+                        <span class="ml-2 text-sm text-gray-600">{{ option }}</span>
+                    </div>
+                </div>
+                
+                <!-- SELECT (Новое) -->
+                <div v-else-if="field.type === 'select'">
+                    <select 
+                        v-model="form.fields[field.label]"
+                        class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 shadow-sm"
+                        :required="field.required"
+                    >
+                        <option value="" disabled>Выберите вариант</option>
+                        <option v-for="option in field.options" :key="option" :value="option">{{ option }}</option>
+                    </select>
+                </div>
+
+                <!-- FILE -->
                 <div v-else-if="field.type === 'file'">
                     <input 
                         type="file" 
@@ -114,6 +170,11 @@ const getStatusLabel = (status) => {
                         class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
                         :required="field.required"
                     >
+                </div>
+
+                <!-- Ошибки валидации -->
+                <div v-if="form.errors[`fields.${field.label}`]" class="text-red-500 text-xs mt-1">
+                    {{ form.errors[`fields.${field.label}`] }}
                 </div>
             </div>
 

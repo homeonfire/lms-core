@@ -3,11 +3,10 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue; // <--- ОБЯЗАТЕЛЬНО
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-// Добавляем ShouldQueue - теперь это письмо пойдет в очередь!
 class WelcomeStudent extends Notification implements ShouldQueue
 {
     use Queueable;
@@ -24,8 +23,11 @@ class WelcomeStudent extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
+        // Получаем название приложения из конфига (из .env)
+        $appName = config('app.name');
+
         return (new MailMessage)
-            ->subject('Добро пожаловать в LMS Core! 🚀')
+            ->subject('Добро пожаловать в ' . $appName . '! 🚀')
             ->greeting('Привет, ' . $notifiable->name . '!')
             ->line('Спасибо за регистрацию на нашей платформе.')
             ->line('Теперь вы можете выбирать курсы и проходить обучение.')

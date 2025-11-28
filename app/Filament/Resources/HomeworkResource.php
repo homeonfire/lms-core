@@ -126,6 +126,8 @@ protected static ?string $pluralModelLabel = 'Домашние задания';
                                         'string' => 'Короткая строка',
                                         'file' => 'Загрузка файла',
                                         'url' => 'Ссылка (URL)',
+                                        'checkboxes' => 'Множественный выбор (Чекбоксы)', 
+                                        'select' => 'Выпадающий список (Один вариант)',
                                     ])
                                     ->required()
                                     ->reactive(), // Чтобы менять иконку или настройки динамически
@@ -140,6 +142,14 @@ protected static ?string $pluralModelLabel = 'Домашние задания';
                                 Forms\Components\Toggle::make('required')
                                     ->label('Обязательно')
                                     ->default(true),
+
+                                // === НОВОЕ ПОЛЕ: ВАРИАНТЫ ОТВЕТОВ ===
+                                Forms\Components\TagsInput::make('options')
+                                    ->label('Варианты ответов')
+                                    ->placeholder('Введите вариант и нажмите Enter')
+                                    ->visible(fn (Forms\Get $get) => in_array($get('type'), ['select', 'checkboxes']))
+                                    ->required(fn (Forms\Get $get) => in_array($get('type'), ['select', 'checkboxes'])),
+                                // ====================================
                             ])
                             ->columns(3) // В одну строку для компактности
                             ->addActionLabel('Добавить поле ответа')
