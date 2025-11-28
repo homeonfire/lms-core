@@ -18,11 +18,9 @@ class LessonResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-book-open';
     protected static ?string $navigationGroup = 'Управление контентом';
     protected static ?string $navigationLabel = 'Уроки';
-
     protected static ?string $modelLabel = 'Урок';
-protected static ?string $pluralModelLabel = 'Уроки';
+    protected static ?string $pluralModelLabel = 'Уроки';
 
-    // Глобальный фильтр (Scope)
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {
         $query = parent::getEloquentQuery();
@@ -46,7 +44,6 @@ protected static ?string $pluralModelLabel = 'Уроки';
             ->schema([
                 Forms\Components\Section::make('Привязка к курсу')
                     ->schema([
-                        // 1. ВЫБОР КУРСА
                         Forms\Components\Select::make('course_id')
                             ->label('Курс')
                             ->options(function () {
@@ -62,14 +59,13 @@ protected static ?string $pluralModelLabel = 'Уроки';
                                 $set('module_id', null);
                                 $set('tariffs', []); 
                             })
-                            ->dehydrated(false) // Не сохраняем в БД (виртуальное поле)
+                            ->dehydrated(false)
                             ->afterStateHydrated(function (Forms\Components\Select $component, ?\App\Models\Lesson $record) {
                                 if ($record && $record->module) {
                                     $component->state($record->module->course_id);
                                 }
                             }),
 
-                        // 2. ВЫБОР МОДУЛЯ
                         Forms\Components\Select::make('module_id')
                             ->label('Модуль')
                             ->options(function (Forms\Get $get) {
@@ -82,29 +78,22 @@ protected static ?string $pluralModelLabel = 'Уроки';
                             ->preload()
                             ->live()
                             ->disabled(fn (Forms\Get $get) => !$get('course_id'))
-                            // АВТО-ЗАПОЛНЕНИЕ ПРИ СМЕНЕ МОДУЛЯ
                             ->afterStateUpdated(function (Forms\Set $set, $state) {
-                                $set('tariffs', []); // Сбрасываем
-                                
+                                $set('tariffs', []); 
                                 if ($state) {
                                     $module = \App\Models\CourseModule::with('tariffs')->find($state);
-                                    // Если у модуля жесткие тарифы - копируем их в урок по умолчанию
                                     if ($module && $module->tariffs->isNotEmpty()) {
                                         $set('tariffs', $module->tariffs->pluck('id')->toArray());
                                     }
                                 }
                             }),
 
-                        // 3. ВЫБОР ТАРИФОВ (СУЖЕНИЕ ВОРОНКИ)
                         Forms\Components\Select::make('tariffs')
                             ->relationship('tariffs', 'name')
                             ->label('Доступно на тарифах')
                             ->multiple()
                             ->preload()
                             ->options(function (Forms\Get $get) {
-                                // Логика: Берем тарифы МОДУЛЯ. 
-                                // Если у модуля нет ограничений — берем тарифы КУРСА.
-                                
                                 $moduleId = $get('module_id');
                                 $courseId = $get('course_id');
 
@@ -112,12 +101,10 @@ protected static ?string $pluralModelLabel = 'Уроки';
 
                                 $module = \App\Models\CourseModule::with('tariffs')->find($moduleId);
                                 
-                                // 1. Если модуль ограничен конкретными тарифами — разрешаем выбирать ТОЛЬКО их
                                 if ($module && $module->tariffs->isNotEmpty()) {
                                     return $module->tariffs->pluck('name', 'id');
                                 }
 
-                                // 2. Если модуль открыт для всех — показываем все тарифы курса
                                 return \App\Models\Tariff::where('course_id', $courseId)->pluck('name', 'id');
                             })
                             ->helperText('Список ограничен тарифами, доступными для выбранного модуля.'),
@@ -142,17 +129,13 @@ protected static ?string $pluralModelLabel = 'Уроки';
                             ->numeric()
                             ->default(15),
 
-                        // === НОВЫЕ ПОЛЯ ===
-                        Forms\Components\DateTimePicker::make('available_at')
-                            ->label('Дата открытия доступа')
-                            ->helperText('Если заполнено, урок будет виден в списке, но открыть его можно будет только после этой даты.'),
-
                         Forms\Components\Toggle::make('is_published')
                             ->label('Урок опубликован')
-                            ->default(true)
-                            ->helperText('Если выключено, урок виден в списке как "Скоро", но войти в него нельзя.'),
+                            ->default(true),
                         
-                        // (Твой старый переключатель)
+                        Forms\Components\DateTimePicker::make('available_at')
+                            ->label('Дата открытия'),
+
                         Forms\Components\Toggle::make('is_stop_lesson')
                             ->label('Стоп-урок')
                             ->default(false),
@@ -170,6 +153,7 @@ protected static ?string $pluralModelLabel = 'Уроки';
                                     ->label('Тип блока')
                                     ->options([
                                         'text'      => 'Текст (HTML)',
+                                        'buttons'   => '🔗 Кнопки / Ссылки', // НОВЫЙ ТИП
                                         'image'     => 'Изображение',
                                         'file'      => 'Файл для скачивания',
                                         'separator' => '--- Разделитель ---',
@@ -183,31 +167,57 @@ protected static ?string $pluralModelLabel = 'Уроки';
                                     ->live()
                                     ->required(),
                                 
-                                // ТЕКСТ
+                                // --- ПОЛЯ ДЛЯ ТЕКСТА ---
                                 Forms\Components\RichEditor::make('content.html')
                                     ->label('Текст')
                                     ->visible(fn (Forms\Get $get) => $get('type') === 'text')
                                     ->required(fn (Forms\Get $get) => $get('type') === 'text')
                                     ->columnSpanFull(),
 
-                                // ВИДЕО
+                                // --- ПОЛЯ ДЛЯ КНОПОК (НОВОЕ) ---
+                                Forms\Components\Group::make()
+                                    ->visible(fn (Forms\Get $get) => $get('type') === 'buttons')
+                                    ->schema([
+                                        Forms\Components\Repeater::make('content.buttons')
+                                            ->label('Список кнопок')
+                                            ->schema([
+                                                Forms\Components\TextInput::make('label')
+                                                    ->label('Текст на кнопке')
+                                                    ->required(),
+                                                Forms\Components\TextInput::make('url')
+                                                    ->label('Ссылка')
+                                                    ->url()
+                                                    ->required(),
+                                                Forms\Components\Select::make('color')
+                                                    ->label('Цвет')
+                                                    ->options([
+                                                        'primary' => 'Синяя (Основная)',
+                                                        'success' => 'Зеленая',
+                                                        'danger' => 'Красная',
+                                                        'gray' => 'Серая',
+                                                    ])
+                                                    ->default('primary')
+                                                    ->required(),
+                                                Forms\Components\Toggle::make('is_blank')
+                                                    ->label('Открывать в новой вкладке')
+                                                    ->default(true),
+                                            ])
+                                            ->columns(2)
+                                            ->addActionLabel('Добавить кнопку')
+                                    ])
+                                    ->columnSpanFull(),
+
+                                // --- ПОЛЯ ДЛЯ ВИДЕО ---
                                 Forms\Components\TextInput::make('content.url')
                                     ->label(fn (Forms\Get $get) => match($get('type')) {
                                         'video_kinescope' => 'ID видео или Ссылка',
                                         default => 'Ссылка на видео'
                                     })
-                                    ->helperText(fn (Forms\Get $get) => match($get('type')) {
-                                        'video_youtube'   => 'Например: https://www.youtube.com/watch?v=...',
-                                        'video_rutube'    => 'Например: https://rutube.ru/video/.../',
-                                        'video_vk'        => 'Важно: Нажмите "Поделиться" -> "Экспортировать" и скопируйте ссылку из src="..."',
-                                        'video_kinescope' => 'Ссылка на плеер или ID видео',
-                                        default => null,
-                                    })
                                     ->visible(fn (Forms\Get $get) => str_starts_with($get('type') ?? '', 'video_'))
                                     ->required(fn (Forms\Get $get) => str_starts_with($get('type') ?? '', 'video_'))
                                     ->columnSpanFull(),
 
-                                // КАРТИНКА
+                                // --- КАРТИНКА ---
                                 Forms\Components\FileUpload::make('content.image_path')
                                     ->label('Изображение')
                                     ->image()
@@ -215,7 +225,7 @@ protected static ?string $pluralModelLabel = 'Уроки';
                                     ->visible(fn (Forms\Get $get) => $get('type') === 'image')
                                     ->columnSpanFull(),
 
-                                // ФАЙЛ
+                                // --- ФАЙЛ ---
                                 Forms\Components\Grid::make(2)
                                     ->visible(fn (Forms\Get $get) => $get('type') === 'file')
                                     ->schema([
@@ -228,7 +238,7 @@ protected static ?string $pluralModelLabel = 'Уроки';
                                             ->required(),
                                     ]),
 
-                                // === НАСТРОЙКИ ТЕСТА ===
+                                // --- ТЕСТ ---
                                 Forms\Components\Group::make()
                                     ->visible(fn (Forms\Get $get) => $get('type') === 'quiz')
                                     ->schema([
@@ -240,8 +250,7 @@ protected static ?string $pluralModelLabel = 'Уроки';
                                                     ->default(70)
                                                     ->minValue(1)
                                                     ->maxValue(100)
-                                                    ->required()
-                                                    ->helperText('Если студент наберет меньше, тест будет считаться не сданным.'),
+                                                    ->required(),
 
                                                 Forms\Components\Repeater::make('content.questions')
                                                     ->label('Вопросы')
@@ -271,13 +280,9 @@ protected static ?string $pluralModelLabel = 'Уроки';
                             ->collapsible()
                             ->itemLabel(fn (array $state): ?string => match($state['type'] ?? '') {
                                 'text' => 'Текст',
+                                'buttons' => 'Кнопки',
                                 'quiz' => 'Тест',
                                 'video_youtube' => 'YouTube',
-                                'video_rutube' => 'RuTube',
-                                'video_vk' => 'VK Video',
-                                'video_kinescope' => 'Kinescope',
-                                'image' => 'Картинка',
-                                'file' => 'Файл: ' . ($state['content']['file_name'] ?? ''),
                                 default => 'Блок'
                             }),
                     ]),
@@ -306,8 +311,8 @@ protected static ?string $pluralModelLabel = 'Уроки';
                     ->color('success')
                     ->placeholder('Все'),
 
-                Tables\Columns\IconColumn::make('is_stop_lesson')
-                    ->label('Стоп-урок')
+                Tables\Columns\IconColumn::make('is_published')
+                    ->label('Вкл')
                     ->boolean(),
 
                 Tables\Columns\TextColumn::make('blocks_count')
@@ -329,9 +334,7 @@ protected static ?string $pluralModelLabel = 'Уроки';
 
     public static function getRelations(): array
     {
-        return [
-            //
-        ];
+        return [];
     }
 
     public static function getPages(): array
