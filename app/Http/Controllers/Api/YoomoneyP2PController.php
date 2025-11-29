@@ -15,7 +15,7 @@ class YoomoneyP2PController extends Controller
         // === 1. ЛОГИРОВАНИЕ (САМОЕ ВАЖНОЕ) ===
         // Записываем в файл laravel.log всё, что пришло в запросе.
         // Это поможет увидеть реальные данные от ЮMoney.
-        Log::info('🔔 YooMoney P2P Webhook INCOMING:', $request->all());
+        Log::error('🔔 YooMoney P2P Webhook INCOMING:', $request->all());
         // =======================================
 
         // 2. Получаем секрет из настроек
@@ -45,7 +45,7 @@ class YoomoneyP2PController extends Controller
 
         // Логируем сравнение хешей для отладки (если вдруг не совпадает)
         if ($hash !== $request->input('sha1_hash')) {
-            Log::warning('⚠️ YooMoney P2P: Hash mismatch', [
+            Log::error('⚠️ YooMoney P2P: Hash mismatch', [
                 'generated_hash' => $hash,
                 'incoming_hash' => $request->input('sha1_hash'),
                 'string_source' => $string
@@ -57,7 +57,7 @@ class YoomoneyP2PController extends Controller
         $orderId = $request->input('label');
         
         if (!$orderId) {
-            Log::info('YooMoney P2P: No label (order_id) provided');
+            Log::error('YooMoney P2P: No label (order_id) provided');
             return response('OK');
         }
 
@@ -76,9 +76,9 @@ class YoomoneyP2PController extends Controller
                 'payment_method' => 'yoomoney_p2p',
             ]);
             
-            Log::info("✅ Order #{$order->id} marked as PAID via YooMoney P2P");
+            Log::error("✅ Order #{$order->id} marked as PAID via YooMoney P2P");
         } else {
-            Log::info("ℹ️ Order #{$order->id} was already paid");
+            Log::error("ℹ️ Order #{$order->id} was already paid");
         }
 
         return response('OK');
