@@ -12,16 +12,23 @@ class YoomoneyP2PController extends Controller
 {
     public function handle(Request $request)
     {
-        // 1. Получаем секрет
+        // === 1. ЛОГИРОВАНИЕ (САМОЕ ВАЖНОЕ) ===
+        // Записываем в файл laravel.log всё, что пришло в запросе.
+        // Это поможет увидеть реальные данные от ЮMoney.
+        Log::info('🔔 YooMoney P2P Webhook INCOMING:', $request->all());
+        // =======================================
+
+        // 2. Получаем секрет из настроек
         $secret = SystemSetting::where('key', 'yoomoney_p2p_secret')->value('payload');
         
         if (!$secret) {
-            Log::error('YooMoney P2P: Secret not configured');
+            Log::error('YooMoney P2P: Secret not configured in Admin Panel');
             return response('Error: Secret not found', 500);
         }
 
-        // 2. Валидация подписи (SHA-1)
-        // Формула: notification_type & operation_id & amount & currency & datetime & sender & codepro & notification_secret & label
+        // 3. Валидация подписи (SHA-1)
+        // ЮMoney шлет параметры именно в таком порядке для хеша:
+        // notification_type & operation_id & amount & currency & datetime & sender & codepro & notification_secret & label
         $string = join('&', [
             $request->input('notification_type'),
             $request->input('operation_id'),
@@ -36,38 +43,42 @@ class YoomoneyP2PController extends Controller
 
         $hash = sha1($string);
 
+        // Логируем сравнение хешей для отладки (если вдруг не совпадает)
         if ($hash !== $request->input('sha1_hash')) {
-            Log::warning('YooMoney P2P: Hash mismatch', ['request' => $request->all()]);
-            return response('Invalid Hash', 200); // Возвращаем 200, чтобы Юмани не долбил нас повторами, но ничего не делаем
+            Log::warning('⚠️ YooMoney P2P: Hash mismatch', [
+                'generated_hash' => $hash,
+                'incoming_hash' => $request->input('sha1_hash'),
+                'string_source' => $string
+            ]);
+            return response('Invalid Hash', 200); // 200 чтобы они отстали
         }
 
-        // 3. Ищем и обновляем заказ
+        // 4. Ищем и обновляем заказ
         $orderId = $request->input('label');
         
         if (!$orderId) {
-            return response('OK'); // Нет ID заказа -> игнорируем
+            Log::info('YooMoney P2P: No label (order_id) provided');
+            return response('OK');
         }
 
         $order = Order::find($orderId);
 
         if (!$order) {
-            Log::error("YooMoney P2P: Order $orderId not found");
+            Log::error("YooMoney P2P: Order #$orderId not found");
             return response('OK');
         }
 
         if ($order->status !== 'paid') {
-            // Если сумма совпадает (или больше, с учетом комиссии)
-            // Юмани шлет amount (сколько списали) и withdraw_amount (сколько придет).
-            // Проверку суммы можно добавить здесь для строгости.
-
             $order->update([
                 'status' => 'paid',
                 'paid_at' => now(),
-                'payment_id' => $request->input('operation_id'), // ID транзакции в Юмани
+                'payment_id' => $request->input('operation_id'),
                 'payment_method' => 'yoomoney_p2p',
             ]);
             
-            Log::info("Order #{$order->id} paid via YooMoney P2P");
+            Log::info("✅ Order #{$order->id} marked as PAID via YooMoney P2P");
+        } else {
+            Log::info("ℹ️ Order #{$order->id} was already paid");
         }
 
         return response('OK');
