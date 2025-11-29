@@ -23,8 +23,9 @@ class UserResource extends Resource
     protected static ?string $navigationLabel = 'Пользователи';
 
     protected static ?string $modelLabel = 'Пользователь';
-protected static ?string $pluralModelLabel = 'Пользователи';
+    protected static ?string $pluralModelLabel = 'Пользователи';
 
+    // === ГЛОБАЛЬНАЯ ФИЛЬТРАЦИЯ (КТО КОГО ВИДИТ) ===
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery()
@@ -37,6 +38,7 @@ protected static ?string $pluralModelLabel = 'Пользователи';
         }
 
         if (auth()->user()->hasRole('Teacher')) {
+            // Учитель видит только тех, кто купил его курсы + себя
             return $query->whereHas('orders.course', function ($q) {
                 $q->where('teacher_id', auth()->id());
             })
@@ -50,58 +52,90 @@ protected static ?string $pluralModelLabel = 'Пользователи';
     {
         return $form
             ->schema([
-                // === ОСНОВНЫЕ ДАННЫЕ ===
-                Forms\Components\Section::make('Данные пользователя')
+                // === ЛЕВАЯ КОЛОНКА (ОСНОВНОЕ) ===
+                Forms\Components\Group::make()
                     ->schema([
-                        Forms\Components\TextInput::make('name')
-                            ->label('Имя')
-                            ->required()
-                            ->maxLength(255),
+                        Forms\Components\Section::make('Профиль')
+                            ->icon('heroicon-o-user')
+                            ->schema([
+                                Forms\Components\TextInput::make('name')
+                                    ->label('Имя')
+                                    ->required()
+                                    ->maxLength(255),
 
-                        Forms\Components\TextInput::make('email')
-                            ->email()
-                            ->required()
-                            ->maxLength(255)
-                            ->unique(ignoreRecord: true),
+                                Forms\Components\TextInput::make('email')
+                                    ->email()
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->unique(ignoreRecord: true),
 
-                        Forms\Components\TextInput::make('password')
-                            ->label('Пароль')
-                            ->password()
-                            ->maxLength(255)
-                            ->required(fn (string $operation): bool => $operation === 'create')
-                            ->dehydrateStateUsing(fn ($state) => Hash::make($state))
-                            ->dehydrated(fn ($state) => filled($state))
-                            ->visible(fn () => auth()->user()->hasRole('Super Admin')),
+                                Forms\Components\TextInput::make('phone')
+                                    ->label('Телефон')
+                                    ->tel()
+                                    ->maxLength(20),
 
-                        Forms\Components\Select::make('roles')
-                            ->label('Роль')
-                            ->relationship('roles', 'name')
-                            ->multiple()
-                            ->preload()
-                            ->searchable()
-                            ->visible(fn () => auth()->user()->hasRole('Super Admin')),
-                            
-                        Forms\Components\Toggle::make('is_active')
-                            ->label('Активен (Бан)')
-                            ->default(true)
-                            ->visible(fn () => auth()->user()->hasRole('Super Admin')),
-                    ])->columns(2),
+                                Forms\Components\TextInput::make('password')
+                                    ->label('Пароль')
+                                    ->password()
+                                    ->dehydrateStateUsing(fn ($state) => Hash::make($state))
+                                    ->dehydrated(fn ($state) => filled($state))
+                                    ->required(fn (string $operation): bool => $operation === 'create')
+                                    ->visible(fn () => auth()->user()->hasRole('Super Admin')),
+                            ])->columns(2),
 
-                // === НОВАЯ СЕКЦИЯ: UTM МЕТКИ ===
-                Forms\Components\Section::make('Маркетинг (UTM метки)')
-                    ->description('Источник, откуда пользователь пришел при регистрации')
-                    ->schema([
-                        Forms\Components\KeyValue::make('utm_data')
-                            ->label('Параметры перехода')
-                            ->keyLabel('Метка')
-                            ->valueLabel('Значение')
-                            ->disabled() // Запрещаем редактировать историю
-                            ->columnSpanFull(),
+                        // Секция: Маркетинг (UTM)
+                        Forms\Components\Section::make('Маркетинговая информация')
+                            ->icon('heroicon-o-chart-bar')
+                            ->description('Параметры перехода при регистрации.')
+                            ->schema([
+                                Forms\Components\KeyValue::make('utm_data')
+                                    ->label('UTM Метки')
+                                    ->keyLabel('Параметр')
+                                    ->valueLabel('Значение')
+                                    ->disabled(), // Только чтение
+                            ])
+                            ->collapsible()
+                            ->collapsed() // Свернуто по умолчанию
+                            ->visible(fn (?User $record) => $record && !empty($record->utm_data)),
                     ])
-                    ->collapsed() // Свернуто по умолчанию
-                    // Показываем, только если метки есть (чтобы не мозолило глаза)
-                    ->visible(fn (?User $record) => $record && !empty($record->utm_data)),
-            ]);
+                    ->columnSpan(['lg' => 2]),
+
+                // === ПРАВАЯ КОЛОНКА (НАСТРОЙКИ) ===
+                Forms\Components\Group::make()
+                    ->schema([
+                        Forms\Components\Section::make('Доступ и Роли')
+                            ->schema([
+                                Forms\Components\Select::make('roles')
+                                    ->label('Роль')
+                                    ->relationship('roles', 'name')
+                                    ->multiple()
+                                    ->preload()
+                                    ->searchable()
+                                    ->visible(fn () => auth()->user()->hasRole('Super Admin')),
+                                
+                                Forms\Components\Toggle::make('is_active')
+                                    ->label('Активен')
+                                    ->onColor('success')
+                                    ->offColor('danger')
+                                    ->default(true)
+                                    ->visible(fn () => auth()->user()->hasRole('Super Admin')),
+                            ]),
+
+                        Forms\Components\Section::make('Метаданные')
+                            ->schema([
+                                Forms\Components\Placeholder::make('created_at')
+                                    ->label('Зарегистрирован')
+                                    ->content(fn (User $record): ?string => $record->created_at?->diffForHumans()),
+                                
+                                Forms\Components\Placeholder::make('updated_at')
+                                    ->label('Последнее обновление')
+                                    ->content(fn (User $record): ?string => $record->updated_at?->diffForHumans()),
+                            ])
+                            ->hidden(fn (string $operation): bool => $operation === 'create'),
+                    ])
+                    ->columnSpan(['lg' => 1]),
+            ])
+            ->columns(3);
     }
 
     public static function table(Table $table): Table
@@ -109,17 +143,25 @@ protected static ?string $pluralModelLabel = 'Пользователи';
         return $table
             ->columns([
                 Tables\Columns\ImageColumn::make('avatar_url')
-                    ->label('Аватар')
+                    ->label('Фото')
                     ->circular()
                     ->defaultImageUrl('https://ui-avatars.com/api/?background=random'),
 
                 Tables\Columns\TextColumn::make('name')
                     ->label('Имя')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('bold'),
 
                 Tables\Columns\TextColumn::make('email')
-                    ->searchable(),
+                    ->searchable()
+                    ->copyable()
+                    ->color('gray'),
+
+                Tables\Columns\TextColumn::make('phone')
+                    ->label('Телефон')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('roles.name')
                     ->label('Роль')
@@ -127,22 +169,23 @@ protected static ?string $pluralModelLabel = 'Пользователи';
                     ->color(fn (string $state): string => match ($state) {
                         'Super Admin' => 'danger',
                         'Teacher' => 'warning',
+                        'Manager' => 'info',
+                        'Curator' => 'primary',
                         'Student' => 'success',
                         default => 'gray',
                     }),
 
-                // Можно добавить индикатор UTM в таблицу (опционально)
                 Tables\Columns\IconColumn::make('utm_data')
                     ->label('UTM')
                     ->boolean()
                     ->trueIcon('heroicon-o-chart-bar')
                     ->falseIcon('')
                     ->getStateUsing(fn (User $record) => !empty($record->utm_data))
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Регистрация')
-                    ->dateTime()
+                    ->dateTime('d.m.Y')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])

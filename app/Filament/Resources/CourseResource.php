@@ -18,13 +18,10 @@ class CourseResource extends Resource
     protected static ?string $model = Course::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
-
     protected static ?string $navigationGroup = 'Управление контентом';
-
-    // === ДОБАВИТЬ ВОТ ЭТО ===
-    protected static ?string $modelLabel = 'Курс'; // Ед. число (для кнопки "Создать Курс")
-    protected static ?string $pluralModelLabel = 'Курсы'; // Мн. число (для заголовка)
-    protected static ?string $navigationLabel = 'Курсы'; // В меню слева
+    protected static ?string $navigationLabel = 'Курсы';
+    protected static ?string $modelLabel = 'Курс';
+    protected static ?string $pluralModelLabel = 'Курсы';
 
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {
@@ -45,110 +42,137 @@ class CourseResource extends Resource
     {
         return $form
             ->schema([
-                // Секция: Основная информация
-                Forms\Components\Section::make('О курсе')
+                // === ЛЕВАЯ КОЛОНКА (Контент - 2/3 ширины) ===
+                Forms\Components\Group::make()
                     ->schema([
-                        Forms\Components\Select::make('teacher_id')
-                            ->relationship('teacher', 'name')
-                            ->label('Преподаватель')
-                            ->disabled(fn () => !auth()->user()->hasRole('Super Admin'))
-                            ->dehydrated() 
-                            ->required()
-                            ->default(auth()->id())
-                            ->searchable()
-                            ->preload(),
-
-                        // === ВЕРНУЛИ ВЫБОР КУРАТОРОВ ===
-                        Forms\Components\Select::make('curators')
-                            ->label('Кураторы курса')
-                            ->relationship('curators', 'name', function ($query) {
-                                // Показываем только пользователей с ролью Curator
-                                return $query->role('Curator');
-                            })
-                            ->multiple()
-                            ->preload()
-                            ->searchable(),
-                        // ===============================
-
-                        Forms\Components\TextInput::make('title')
-                            ->label('Название курса')
-                            ->required()
-                            ->maxLength(255)
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(fn (Set $set, ?string $state) => $set('slug', Str::slug($state))),
-
-                        Forms\Components\TextInput::make('slug')
-                            ->label('Ссылка (slug)')
-                            ->required()
-                            ->maxLength(255)
-                            ->unique(ignoreRecord: true),
-
-                        Forms\Components\Textarea::make('description')
-                            ->label('Краткое описание')
-                            ->columnSpanFull(),
-                    ])->columns(2),
-
-                // Секция: Медиа и Настройки
-                Forms\Components\Section::make('Настройки и Цена')
-                    ->schema([
-                        // Поле публичной ссылки
-                        Forms\Components\TextInput::make('public_link')
-                            ->label('Публичная ссылка (Лендинг)')
-                            ->formatStateUsing(fn (?Course $record) => $record ? route('public.course.show', $record->slug) : null)
-                            ->disabled()
-                            ->dehydrated(false)
-                            ->columnSpanFull()
-                            ->suffixAction(
-                                \Filament\Forms\Components\Actions\Action::make('open')
-                                    ->icon('heroicon-m-arrow-top-right-on-square')
-                                    ->url(fn (?Course $record) => $record ? route('public.course.show', $record->slug) : null)
-                                    ->openUrlInNewTab()
-                            )
-                            ->visible(fn (?Course $record) => $record !== null),
-
-                        Forms\Components\FileUpload::make('thumbnail_url')
-                            ->label('Обложка курса')
-                            ->image()
-                            ->directory('course-thumbnails')
-                            ->visibility('public'),
-
-                        Forms\Components\TextInput::make('price')
-                            ->label('Цена (руб)')
-                            ->numeric()
-                            ->prefix('₽')
-                            ->default(0),
-
-                        Forms\Components\Grid::make(2)
+                        Forms\Components\Section::make('Основная информация')
                             ->schema([
-                                Forms\Components\DateTimePicker::make('starts_at')
-                                    ->label('Дата начала'),
-                                Forms\Components\DateTimePicker::make('ends_at')
-                                    ->label('Дата окончания'),
-                            ]),
-                            
-                        Forms\Components\Toggle::make('is_published')
-                            ->label('Опубликован')
-                            ->onColor('success')
-                            ->offColor('danger')
-                            ->default(false),
-                    ])->columns(2),
+                                Forms\Components\TextInput::make('title')
+                                    ->label('Название курса')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(fn (Set $set, ?string $state) => $set('slug', Str::slug($state)))
+                                    ->columnSpanFull(),
 
-                    Forms\Components\Section::make('Сообщество (Telegram)')
-                    ->description('Общие ссылки (используются, если у тарифа нет своих ссылок)')
+                                Forms\Components\TextInput::make('slug')
+                                    ->label('Ссылка (URL)')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->unique(ignoreRecord: true)
+                                    ->prefix(url('/c/').'/')
+                                    ->columnSpanFull(),
+
+                                // Заменили Textarea на RichEditor для красоты
+                                Forms\Components\RichEditor::make('description')
+                                    ->label('Описание курса')
+                                    ->columnSpanFull()
+                                    ->toolbarButtons([
+                                        'bold', 'italic', 'bulletList', 'orderedList', 'link', 'h2', 'h3',
+                                    ]),
+                            ]),
+
+                        Forms\Components\Section::make('Команда курса')
+                            ->schema([
+                                Forms\Components\Select::make('teacher_id')
+                                    ->relationship('teacher', 'name')
+                                    ->label('Главный преподаватель')
+                                    ->disabled(fn () => !auth()->user()->hasRole('Super Admin'))
+                                    ->dehydrated()
+                                    ->required()
+                                    ->default(auth()->id())
+                                    ->searchable()
+                                    ->preload(),
+
+                                Forms\Components\Select::make('curators')
+                                    ->label('Кураторы')
+                                    ->relationship('curators', 'name', function ($query) {
+                                        return $query->role('Curator');
+                                    })
+                                    ->multiple()
+                                    ->preload()
+                                    ->searchable(),
+                            ])->columns(2),
+                    ])
+                    ->columnSpan(['lg' => 2]),
+
+                // === ПРАВАЯ КОЛОНКА (Настройки - 1/3 ширины) ===
+                Forms\Components\Group::make()
                     ->schema([
-                        Forms\Components\TextInput::make('telegram_channel_link')
-                            ->label('Канал курса')
-                            ->prefix('https://t.me/')
-                            ->url()
-                            ->placeholder('https://t.me/channel_name'),
-                            
-                        Forms\Components\TextInput::make('telegram_chat_link')
-                            ->label('Чат участников')
-                            ->prefix('https://t.me/')
-                            ->url()
-                            ->placeholder('https://t.me/+InviteLink...'),
-                    ])->columns(2)->collapsed(),
-            ]);
+                        
+                        // Карточка статуса
+                        Forms\Components\Section::make('Статус')
+                            ->schema([
+                                Forms\Components\Toggle::make('is_published')
+                                    ->label('Опубликован')
+                                    ->helperText('Виден в каталоге')
+                                    ->onColor('success')
+                                    ->offColor('gray')
+                                    ->default(false),
+                                
+                                Forms\Components\DateTimePicker::make('starts_at')
+                                    ->label('Старт потока')
+                                    ->native(false),
+
+                                Forms\Components\DateTimePicker::make('ends_at')
+                                    ->label('Конец потока')
+                                    ->native(false),
+                            ]),
+
+                        // Карточка цены
+                        Forms\Components\Section::make('Стоимость')
+                            ->schema([
+                                Forms\Components\TextInput::make('price')
+                                    ->label('Базовая цена')
+                                    ->numeric()
+                                    ->prefix('₽')
+                                    ->default(0)
+                                    ->helperText('Если 0 — бесплатно (или действуют тарифы).'),
+                            ]),
+
+                        // Карточка медиа
+                        Forms\Components\Section::make('Медиа')
+                            ->schema([
+                                Forms\Components\FileUpload::make('thumbnail_url')
+                                    ->label('Обложка')
+                                    ->image()
+                                    ->directory('course-thumbnails')
+                                    ->visibility('public')
+                                    ->imageEditor(), // Можно обрезать картинку прямо в админке!
+                            ]),
+
+                        // Карточка ссылок
+                        Forms\Components\Section::make('Ссылки')
+                            ->schema([
+                                Forms\Components\TextInput::make('public_link')
+                                    ->label('Лендинг')
+                                    ->formatStateUsing(fn (?Course $record) => $record ? route('public.course.show', $record->slug) : null)
+                                    ->disabled()
+                                    ->dehydrated(false)
+                                    ->suffixAction(
+                                        \Filament\Forms\Components\Actions\Action::make('copy')
+                                            ->icon('heroicon-m-clipboard')
+                                            ->action(function ($state, $livewire) {
+                                                // Копирование в буфер (JS) через нативный метод Filament
+                                                $livewire->js("window.navigator.clipboard.writeText('{$state}')");
+                                                \Filament\Notifications\Notification::make()->title('Скопировано')->success()->send();
+                                            })
+                                    ),
+                                    
+                                Forms\Components\TextInput::make('telegram_channel_link')
+                                    ->label('Канал TG')
+                                    ->prefixIcon('heroicon-o-paper-airplane')
+                                    ->url(),
+                                    
+                                Forms\Components\TextInput::make('telegram_chat_link')
+                                    ->label('Чат TG')
+                                    ->prefixIcon('heroicon-o-chat-bubble-left-right')
+                                    ->url(),
+                            ]),
+                    ])
+                    ->columnSpan(['lg' => 1]),
+            ])
+            ->columns(3); // Используем сетку из 3 колонок
     }
 
     public static function table(Table $table): Table
@@ -156,31 +180,34 @@ class CourseResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\ImageColumn::make('thumbnail_url')
-                    ->label('Обложка')
+                    ->label('Фото')
                     ->circular(),
 
                 Tables\Columns\TextColumn::make('title')
                     ->label('Название')
                     ->searchable()
                     ->sortable()
-                    ->weight('bold'),
+                    ->weight('bold')
+                    ->limit(30),
 
                 Tables\Columns\TextColumn::make('teacher.name')
-                    ->label('Преподаватель')
-                    ->sortable(),
+                    ->label('Автор')
+                    ->sortable()
+                    ->color('gray')
+                    ->toggleable(),
 
                 Tables\Columns\TextColumn::make('price')
                     ->label('Цена')
                     ->money('rub')
                     ->sortable(),
 
-                Tables\Columns\IconColumn::make('is_published')
-                    ->label('Статус')
-                    ->boolean(),
+                // Используем ToggleColumn для быстрого переключения
+                Tables\Columns\ToggleColumn::make('is_published')
+                    ->label('Публикация'),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Создан')
-                    ->dateTime()
+                    ->dateTime('d.m.Y')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -190,9 +217,10 @@ class CourseResource extends Resource
                     ->label('Только опубликованные'),
             ])
             ->actions([
-                Tables\Actions\Action::make('public_link')
-                    ->label('Лендинг')
-                    ->icon('heroicon-o-globe-alt')
+                // Кнопка "Открыть на сайте"
+                Tables\Actions\Action::make('visit')
+                    ->label('На сайт')
+                    ->icon('heroicon-m-arrow-top-right-on-square')
                     ->url(fn (Course $record) => route('public.course.show', $record->slug))
                     ->openUrlInNewTab()
                     ->color('gray'),

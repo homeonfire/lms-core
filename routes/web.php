@@ -31,6 +31,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::get('/learning/{course:slug}/{lessonSlug?}', [\App\Http\Controllers\Student\LearningController::class, 'show'])
     ->name('learning.lesson');
 
+    // Страница выбора оплаты
+    Route::get('/payment/{order}/checkout', [\App\Http\Controllers\Student\PaymentController::class, 'checkout'])
+        ->name('payment.checkout');
+
+    // Инициализация платежа
+    Route::post('/payment/{order}/pay', [\App\Http\Controllers\Student\PaymentController::class, 'pay'])
+        ->name('payment.pay');
+
     // Каталог курсов
     Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
     Route::get('/courses/{course:slug}', [CourseController::class, 'show'])->name('courses.show');
@@ -54,6 +62,10 @@ Route::post('/courses/{course:slug}/enroll', [\App\Http\Controllers\Student\Orde
 // Страница "Спасибо за покупку"
 Route::get('/courses/{course:slug}/thank-you', [\App\Http\Controllers\Student\CourseController::class, 'thankYou'])
     ->name('courses.thankyou');
+
+    // История заказов
+Route::get('/my-orders', [\App\Http\Controllers\Student\OrderController::class, 'index'])
+    ->name('my.orders');
     // Страница "Заказ уже существует"
 Route::get('/courses/{course:slug}/order-exists', [\App\Http\Controllers\Student\CourseController::class, 'orderExists'])
     ->name('courses.order_exists');

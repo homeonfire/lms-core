@@ -42,237 +42,264 @@ class LessonResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Привязка к курсу')
-                    ->schema([
-                        Forms\Components\Select::make('course_id')
-                            ->label('Курс')
-                            ->options(function () {
-                                $query = \App\Models\Course::query();
-                                if (!auth()->user()->hasRole('Super Admin')) {
-                                    $query->where('teacher_id', auth()->id());
-                                }
-                                return $query->pluck('title', 'id');
-                            })
-                            ->required()
-                            ->live()
-                            ->afterStateUpdated(function (Forms\Set $set) {
-                                $set('module_id', null);
-                                $set('tariffs', []); 
-                            })
-                            ->dehydrated(false)
-                            ->afterStateHydrated(function (Forms\Components\Select $component, ?\App\Models\Lesson $record) {
-                                if ($record && $record->module) {
-                                    $component->state($record->module->course_id);
-                                }
-                            }),
-
-                        Forms\Components\Select::make('module_id')
-                            ->label('Модуль')
-                            ->options(function (Forms\Get $get) {
-                                $courseId = $get('course_id');
-                                if (!$courseId) return [];
-                                return \App\Models\CourseModule::where('course_id', $courseId)->pluck('title', 'id');
-                            })
-                            ->required()
-                            ->searchable()
-                            ->preload()
-                            ->live()
-                            ->disabled(fn (Forms\Get $get) => !$get('course_id'))
-                            ->afterStateUpdated(function (Forms\Set $set, $state) {
-                                $set('tariffs', []); 
-                                if ($state) {
-                                    $module = \App\Models\CourseModule::with('tariffs')->find($state);
-                                    if ($module && $module->tariffs->isNotEmpty()) {
-                                        $set('tariffs', $module->tariffs->pluck('id')->toArray());
-                                    }
-                                }
-                            }),
-
-                        Forms\Components\Select::make('tariffs')
-                            ->relationship('tariffs', 'name')
-                            ->label('Доступно на тарифах')
-                            ->multiple()
-                            ->preload()
-                            ->options(function (Forms\Get $get) {
-                                $moduleId = $get('module_id');
-                                $courseId = $get('course_id');
-
-                                if (!$moduleId) return [];
-
-                                $module = \App\Models\CourseModule::with('tariffs')->find($moduleId);
-                                
-                                if ($module && $module->tariffs->isNotEmpty()) {
-                                    return $module->tariffs->pluck('name', 'id');
-                                }
-
-                                return \App\Models\Tariff::where('course_id', $courseId)->pluck('name', 'id');
-                            })
-                            ->helperText('Список ограничен тарифами, доступными для выбранного модуля.'),
-                            
-                    ])->columns(2),
-
-                Forms\Components\Section::make('Настройки урока')
-                    ->schema([
-                        Forms\Components\TextInput::make('title')
-                            ->label('Тема урока')
-                            ->required()
-                            ->maxLength(255)
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(fn (Forms\Set $set, ?string $state) => $set('slug', Str::slug($state))),
-
-                        Forms\Components\TextInput::make('slug')
-                            ->required()
-                            ->maxLength(255),
-
-                        Forms\Components\TextInput::make('duration_minutes')
-                            ->label('Длительность (мин)')
-                            ->numeric()
-                            ->default(15),
-
-                        Forms\Components\Toggle::make('is_published')
-                            ->label('Урок опубликован')
-                            ->default(true),
-                        
-                        Forms\Components\DateTimePicker::make('available_at')
-                            ->label('Дата открытия'),
-
-                        Forms\Components\Toggle::make('is_stop_lesson')
-                            ->label('Стоп-урок')
-                            ->default(false),
-                    ])->columns(2),
-
-                // === КОНСТРУКТОР КОНТЕНТА ===
-                Forms\Components\Section::make('Содержание урока')
-                    ->schema([
-                        Forms\Components\Repeater::make('blocks')
-                            ->relationship()
-                            ->label('Блоки контента')
-                            ->orderColumn('sort_order')
+                Forms\Components\Tabs::make('LessonTabs')
+                    ->tabs([
+                        // === ВКЛАДКА 1: ОСНОВНОЕ ===
+                        Forms\Components\Tabs\Tab::make('Основное')
+                            ->icon('heroicon-o-link')
                             ->schema([
-                                Forms\Components\Select::make('type')
-                                    ->label('Тип блока')
-                                    ->options([
-                                        'text'      => 'Текст (Rich Text)',
-                                        'audio'     => '🎧 Аудио / Подкаст', // <--- НОВЫЙ ТИП
-                                        'buttons'   => '🔗 Кнопки / Ссылки',
-                                        'image'     => 'Изображение',
-                                        'file'      => 'Файл для скачивания',
-                                        'separator' => '--- Разделитель ---',
-                                        'quiz'      => '⚡ Тест / Квиз',
-                                        'video_youtube'   => 'Видео: YouTube',
-                                        'video_rutube'    => 'Видео: RuTube',
-                                        'video_vk'        => 'Видео: VK Видео',
-                                        'video_kinescope' => 'Видео: Kinescope',
-                                    ])
-                                    ->default('text')
-                                    ->live()
-                                    ->required(),
-                                
-                                // --- ТЕКСТ ---
-                                Forms\Components\RichEditor::make('content.html')
-                                    ->label('Текст')
-                                    ->visible(fn (Forms\Get $get) => $get('type') === 'text')
-                                    ->required(fn (Forms\Get $get) => $get('type') === 'text')
-                                    ->columnSpanFull(),
-
-                                // --- АУДИО (НОВОЕ ПОЛЕ) ---
-                                Forms\Components\FileUpload::make('content.audio_path')
-                                    ->label('Аудиофайл (MP3, WAV, M4A)')
-                                    ->directory('lesson-audio')
-                                    ->acceptedFileTypes(['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/ogg', 'audio/x-m4a'])
-                                    ->maxSize(51200) // 50MB
-                                    ->visible(fn (Forms\Get $get) => $get('type') === 'audio')
-                                    ->required(fn (Forms\Get $get) => $get('type') === 'audio')
-                                    ->columnSpanFull(),
-
-                                // --- КНОПКИ ---
-                                Forms\Components\Group::make()
-                                    ->visible(fn (Forms\Get $get) => $get('type') === 'buttons')
+                                Forms\Components\Section::make('Привязка к курсу')
+                                    ->description('Выберите, где будет находиться этот урок')
                                     ->schema([
-                                        Forms\Components\Repeater::make('content.buttons')
-                                            ->label('Список кнопок')
-                                            ->schema([
-                                                Forms\Components\TextInput::make('label')->label('Текст')->required(),
-                                                Forms\Components\TextInput::make('url')->label('Ссылка')->url()->required(),
-                                                Forms\Components\Select::make('color')
-                                                    ->label('Цвет')
-                                                    ->options([
-                                                        'primary' => 'Синяя', 'success' => 'Зеленая', 'danger' => 'Красная', 'gray' => 'Серая',
-                                                    ])
-                                                    ->default('primary')->required(),
-                                                Forms\Components\Toggle::make('is_blank')->label('Новая вкладка')->default(true),
-                                            ])->columns(2)->addActionLabel('Добавить кнопку')
-                                    ])->columnSpanFull(),
+                                        // 1. КУРС
+                                        Forms\Components\Select::make('course_id')
+                                            ->label('Курс')
+                                            ->options(function () {
+                                                $query = \App\Models\Course::query();
+                                                if (!auth()->user()->hasRole('Super Admin')) {
+                                                    $query->where('teacher_id', auth()->id());
+                                                }
+                                                return $query->pluck('title', 'id');
+                                            })
+                                            ->required()
+                                            ->live()
+                                            ->afterStateUpdated(function (Forms\Set $set) {
+                                                $set('module_id', null);
+                                                $set('tariffs', []); 
+                                            })
+                                            ->dehydrated(false)
+                                            ->afterStateHydrated(function (Forms\Components\Select $component, ?\App\Models\Lesson $record) {
+                                                if ($record && $record->module) {
+                                                    $component->state($record->module->course_id);
+                                                }
+                                            }),
 
-                                // --- ВИДЕО ---
-                                Forms\Components\TextInput::make('content.url')
-                                    ->label(fn (Forms\Get $get) => match($get('type')) {
-                                        'video_kinescope' => 'ID видео или Ссылка',
-                                        default => 'Ссылка на видео'
-                                    })
-                                    ->visible(fn (Forms\Get $get) => str_starts_with($get('type') ?? '', 'video_'))
-                                    ->required(fn (Forms\Get $get) => str_starts_with($get('type') ?? '', 'video_'))
-                                    ->columnSpanFull(),
+                                        // 2. МОДУЛЬ
+                                        Forms\Components\Select::make('module_id')
+                                            ->label('Модуль')
+                                            ->options(function (Forms\Get $get) {
+                                                $courseId = $get('course_id');
+                                                if (!$courseId) return [];
+                                                return \App\Models\CourseModule::where('course_id', $courseId)->pluck('title', 'id');
+                                            })
+                                            ->required()
+                                            ->searchable()
+                                            ->preload()
+                                            ->live()
+                                            ->disabled(fn (Forms\Get $get) => !$get('course_id'))
+                                            ->afterStateUpdated(function (Forms\Set $set, $state) {
+                                                $set('tariffs', []); 
+                                                if ($state) {
+                                                    $module = \App\Models\CourseModule::with('tariffs')->find($state);
+                                                    // Наследуем тарифы модуля
+                                                    if ($module && $module->tariffs->isNotEmpty()) {
+                                                        $set('tariffs', $module->tariffs->pluck('id')->toArray());
+                                                    }
+                                                }
+                                            }),
 
-                                // --- КАРТИНКА ---
-                                Forms\Components\FileUpload::make('content.image_path')
-                                    ->label('Изображение')
-                                    ->image()
-                                    ->directory('lesson-images')
-                                    ->visible(fn (Forms\Get $get) => $get('type') === 'image')
-                                    ->columnSpanFull(),
+                                        // 3. ТАРИФЫ
+                                        Forms\Components\Select::make('tariffs')
+                                            ->relationship('tariffs', 'name')
+                                            ->label('Доступно на тарифах')
+                                            ->multiple()
+                                            ->preload()
+                                            ->options(function (Forms\Get $get) {
+                                                $moduleId = $get('module_id');
+                                                $courseId = $get('course_id');
 
-                                // --- ФАЙЛ ---
-                                Forms\Components\Grid::make(2)
-                                    ->visible(fn (Forms\Get $get) => $get('type') === 'file')
+                                                if (!$moduleId) return [];
+
+                                                $module = \App\Models\CourseModule::with('tariffs')->find($moduleId);
+                                                
+                                                // Если модуль ограничен — показываем только эти тарифы
+                                                if ($module && $module->tariffs->isNotEmpty()) {
+                                                    return $module->tariffs->pluck('name', 'id');
+                                                }
+
+                                                return \App\Models\Tariff::where('course_id', $courseId)->pluck('name', 'id');
+                                            })
+                                            ->helperText('Список ограничен тарифами, доступными для выбранного модуля.')
+                                            ->columnSpanFull(),
+                                    ])->columns(2),
+                                    
+                                Forms\Components\Section::make('Название')
                                     ->schema([
-                                        Forms\Components\FileUpload::make('content.file_path')
-                                            ->label('Файл')
-                                            ->directory('lesson-files')
-                                            ->required(),
-                                        Forms\Components\TextInput::make('content.file_name')
-                                            ->label('Название файла')
-                                            ->required(),
+                                        Forms\Components\TextInput::make('title')
+                                            ->label('Тема урока')
+                                            ->required()
+                                            ->maxLength(255)
+                                            ->live(onBlur: true)
+                                            ->afterStateUpdated(fn (Forms\Set $set, ?string $state) => $set('slug', Str::slug($state))),
                                     ]),
+                            ]),
 
-                                // --- ТЕСТ ---
-                                Forms\Components\Group::make()
-                                    ->visible(fn (Forms\Get $get) => $get('type') === 'quiz')
+                        // === ВКЛАДКА 2: КОНТЕНТ ===
+                        Forms\Components\Tabs\Tab::make('Контент урока')
+                            ->icon('heroicon-o-document-text')
+                            ->schema([
+                                Forms\Components\Repeater::make('blocks')
+                                    ->relationship()
+                                    ->hiddenLabel()
+                                    ->label('Блоки контента')
+                                    ->orderColumn('sort_order')
                                     ->schema([
-                                        Forms\Components\Section::make('Конструктор теста')
+                                        Forms\Components\Select::make('type')
+                                            ->label('Тип блока')
+                                            ->options([
+                                                'text'      => 'Текст (HTML)',
+                                                'audio'     => '🎧 Аудио / Подкаст',
+                                                'buttons'   => '🔗 Кнопки / Ссылки',
+                                                'image'     => 'Изображение',
+                                                'file'      => 'Файл для скачивания',
+                                                'separator' => '--- Разделитель ---',
+                                                'quiz'      => '⚡ Тест / Квиз',
+                                                'video_youtube'   => 'Видео: YouTube',
+                                                'video_rutube'    => 'Видео: RuTube',
+                                                'video_vk'        => 'Видео: VK Видео',
+                                                'video_kinescope' => 'Видео: Kinescope',
+                                            ])
+                                            ->default('text')
+                                            ->live()
+                                            ->required()
+                                            ->columnSpanFull(),
+                                        
+                                        // 1. ТЕКСТ
+                                        Forms\Components\RichEditor::make('content.html')
+                                            ->label('Текст')
+                                            ->visible(fn (Forms\Get $get) => $get('type') === 'text')
+                                            ->required(fn (Forms\Get $get) => $get('type') === 'text')
+                                            ->columnSpanFull(),
+
+                                        // 2. АУДИО
+                                        Forms\Components\FileUpload::make('content.audio_path')
+                                            ->label('Аудиофайл (MP3, WAV, M4A)')
+                                            ->directory('lesson-audio')
+                                            ->acceptedFileTypes(['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/ogg', 'audio/x-m4a'])
+                                            ->maxSize(51200)
+                                            ->visible(fn (Forms\Get $get) => $get('type') === 'audio')
+                                            ->required(fn (Forms\Get $get) => $get('type') === 'audio')
+                                            ->columnSpanFull(),
+
+                                        // 3. КНОПКИ
+                                        Forms\Components\Group::make()
+                                            ->visible(fn (Forms\Get $get) => $get('type') === 'buttons')
                                             ->schema([
-                                                Forms\Components\TextInput::make('content.min_score')
-                                                    ->label('Минимальный % прохождения')
-                                                    ->numeric()->default(70)->required(),
-                                                Forms\Components\Repeater::make('content.questions')
-                                                    ->label('Вопросы')
+                                                Forms\Components\Repeater::make('content.buttons')
+                                                    ->label('Список кнопок')
                                                     ->schema([
-                                                        Forms\Components\TextInput::make('question')->required(),
-                                                        Forms\Components\Repeater::make('answers')
-                                                            ->label('Ответы')
-                                                            ->schema([
-                                                                Forms\Components\TextInput::make('text')->required(),
-                                                                Forms\Components\Toggle::make('is_correct')->default(false),
-                                                            ])->minItems(2)->columns(2),
-                                                    ])->collapsed(),
+                                                        Forms\Components\TextInput::make('label')->label('Текст')->required(),
+                                                        Forms\Components\TextInput::make('url')->label('Ссылка')->url()->required(),
+                                                        Forms\Components\Select::make('color')
+                                                            ->options(['primary'=>'Синяя','success'=>'Зеленая','danger'=>'Красная','gray'=>'Серая'])
+                                                            ->default('primary')->required(),
+                                                        Forms\Components\Toggle::make('is_blank')->label('Новая вкладка')->default(true),
+                                                    ])->columns(2)->addActionLabel('Добавить кнопку')
+                                            ])->columnSpanFull(),
+
+                                        // 4. ВИДЕО
+                                        Forms\Components\TextInput::make('content.url')
+                                            ->label(fn (Forms\Get $get) => match($get('type')) {
+                                                'video_kinescope' => 'ID видео или Ссылка',
+                                                default => 'Ссылка на видео'
+                                            })
+                                            ->visible(fn (Forms\Get $get) => str_starts_with($get('type') ?? '', 'video_'))
+                                            ->required(fn (Forms\Get $get) => str_starts_with($get('type') ?? '', 'video_'))
+                                            ->columnSpanFull(),
+
+                                        // 5. КАРТИНКА
+                                        Forms\Components\FileUpload::make('content.image_path')
+                                            ->label('Изображение')
+                                            ->image()
+                                            ->directory('lesson-images')
+                                            ->visible(fn (Forms\Get $get) => $get('type') === 'image')
+                                            ->columnSpanFull(),
+
+                                        // 6. ФАЙЛ
+                                        Forms\Components\Grid::make(2)
+                                            ->visible(fn (Forms\Get $get) => $get('type') === 'file')
+                                            ->schema([
+                                                Forms\Components\FileUpload::make('content.file_path')
+                                                    ->label('Файл')
+                                                    ->directory('lesson-files')
+                                                    ->required(),
+                                                Forms\Components\TextInput::make('content.file_name')
+                                                    ->label('Название файла')
+                                                    ->required(),
                                             ]),
+
+                                        // 7. ТЕСТ
+                                        Forms\Components\Group::make()
+                                            ->visible(fn (Forms\Get $get) => $get('type') === 'quiz')
+                                            ->schema([
+                                                Forms\Components\Section::make('Конструктор теста')
+                                                    ->schema([
+                                                        Forms\Components\TextInput::make('content.min_score')
+                                                            ->label('Минимальный % прохождения')
+                                                            ->numeric()->default(70)->required(),
+                                                        Forms\Components\Repeater::make('content.questions')
+                                                            ->label('Вопросы')
+                                                            ->schema([
+                                                                Forms\Components\TextInput::make('question')->label('Вопрос')->required(),
+                                                                Forms\Components\Repeater::make('answers')
+                                                                    ->label('Ответы')
+                                                                    ->schema([
+                                                                        Forms\Components\TextInput::make('text')->label('Ответ')->required(),
+                                                                        Forms\Components\Toggle::make('is_correct')->label('Верный')->default(false),
+                                                                    ])->minItems(2)->columns(2),
+                                                            ])->itemLabel(fn (array $state): ?string => $state['question'] ?? null)->collapsed(),
+                                                    ]),
+                                            ]),
+                                    ])
+                                    ->collapsible()
+                                    ->itemLabel(fn (array $state): ?string => match($state['type'] ?? '') {
+                                        'text' => 'Текст',
+                                        'audio' => 'Аудио',
+                                        'buttons' => 'Кнопки',
+                                        'quiz' => 'Тест',
+                                        'video_youtube' => 'YouTube',
+                                        'video_rutube' => 'RuTube',
+                                        'video_vk' => 'VK Video',
+                                        'video_kinescope' => 'Kinescope',
+                                        'image' => 'Картинка',
+                                        'file' => 'Файл',
+                                        default => 'Блок'
+                                    }),
+                            ]),
+
+                        // === ВКЛАДКА 3: НАСТРОЙКИ ===
+                        Forms\Components\Tabs\Tab::make('Настройки публикации')
+                            ->icon('heroicon-o-cog')
+                            ->schema([
+                                Forms\Components\TextInput::make('slug')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->helperText('URL-адрес урока'),
+
+                                Forms\Components\TextInput::make('duration_minutes')
+                                    ->label('Длительность (мин)')
+                                    ->numeric()
+                                    ->default(15),
+
+                                Forms\Components\DateTimePicker::make('available_at')
+                                    ->label('Отложенная публикация')
+                                    ->helperText('Урок откроется автоматически в это время'),
+
+                                Forms\Components\Grid::make(2)
+                                    ->schema([
+                                        Forms\Components\Toggle::make('is_published')
+                                            ->label('Урок опубликован')
+                                            ->default(true)
+                                            ->onColor('success')
+                                            ->offColor('danger'),
+
+                                        Forms\Components\Toggle::make('is_stop_lesson')
+                                            ->label('Стоп-урок')
+                                            ->helperText('Не пускать дальше без выполнения ДЗ')
+                                            ->default(false),
                                     ]),
-                            ])
-                            ->collapsible()
-                            ->itemLabel(fn (array $state): ?string => match($state['type'] ?? '') {
-                                'text' => 'Текст',
-                                'audio' => 'Аудио',
-                                'buttons' => 'Кнопки',
-                                'quiz' => 'Тест',
-                                'video_youtube' => 'YouTube',
-                                'video_rutube' => 'RuTube',
-                                'video_vk' => 'VK Video',
-                                'video_kinescope' => 'Kinescope',
-                                'image' => 'Картинка',
-                                'file' => 'Файл',
-                                default => 'Блок'
-                            }),
-                    ]),
+                            ]),
+                    ])->columnSpanFull(),
             ]);
     }
 
@@ -280,21 +307,63 @@ class LessonResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('title')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('module.course.title')->sortable(),
-                Tables\Columns\TextColumn::make('module.title'),
-                Tables\Columns\TextColumn::make('tariffs.name')->badge()->color('success')->placeholder('Все'),
-                Tables\Columns\IconColumn::make('is_published')->boolean(),
-                Tables\Columns\TextColumn::make('blocks_count')->counts('blocks'),
+                Tables\Columns\TextColumn::make('title')
+                    ->label('Название')
+                    ->searchable()
+                    ->sortable()
+                    ->limit(30),
+                
+                Tables\Columns\TextColumn::make('module.course.title')
+                    ->label('Курс')
+                    ->sortable()
+                    ->limit(20)
+                    ->color('gray'),
+
+                Tables\Columns\TextColumn::make('module.title')
+                    ->label('Модуль')
+                    ->limit(20),
+
+                Tables\Columns\TextColumn::make('tariffs.name')
+                    ->label('Тарифы')
+                    ->badge()
+                    ->color('success')
+                    ->placeholder('Все'),
+
+                // БЫСТРЫЕ ПЕРЕКЛЮЧАТЕЛИ
+                Tables\Columns\ToggleColumn::make('is_published')
+                    ->label('Вкл'),
+
+                Tables\Columns\ToggleColumn::make('is_stop_lesson')
+                    ->label('Стоп'),
+
+                Tables\Columns\TextColumn::make('blocks_count')
+                    ->counts('blocks')
+                    ->label('Блоков')
+                    ->alignCenter(),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('course')->relationship('module.course', 'title'),
+                Tables\Filters\SelectFilter::make('course')
+                    ->relationship('module.course', 'title')
+                    ->label('Фильтр по курсу'),
+                
+                Tables\Filters\Filter::make('is_published')
+                    ->query(fn ($query) => $query->where('is_published', true))
+                    ->label('Только опубликованные'),
             ])
-            ->actions([Tables\Actions\EditAction::make()])
-            ->bulkActions([Tables\Actions\DeleteBulkAction::make()]);
+            ->actions([
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
+            ])
+            ->bulkActions([
+                Tables\Actions\DeleteBulkAction::make(),
+            ]);
     }
 
-    public static function getRelations(): array { return []; }
+    public static function getRelations(): array
+    {
+        return [];
+    }
+
     public static function getPages(): array
     {
         return [

@@ -128,7 +128,7 @@ class FastOrderController extends Controller
 
         $isFree = $amount === 0;
         
-        Order::create([
+        $order = Order::create([
             'user_id' => $user->id,
             'course_id' => $course->id,
             'tariff_id' => $tariffId,
@@ -143,6 +143,6 @@ class FastOrderController extends Controller
              return redirect()->route('my.learning');
         }
 
-        return redirect()->route('public.course.thankyou', $course->slug);
+        return redirect()->route('payment.checkout', $order->id);
     }
 }

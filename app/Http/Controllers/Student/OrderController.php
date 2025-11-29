@@ -8,17 +8,31 @@ use App\Models\Order;
 use App\Models\Tariff;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Traits\HasUtmCollection; 
+use App\Traits\HasUtmCollection;
+use Inertia\Inertia; // Не забудь этот импорт
 
 class OrderController extends Controller
 {
-    use HasUtmCollection; 
-    
+    use HasUtmCollection;
+
+    // === НОВЫЙ МЕТОД: СПИСОК ЗАКАЗОВ ===
+    public function index()
+    {
+        $orders = Order::where('user_id', Auth::id())
+            ->with(['course', 'tariff']) // Подгружаем связи
+            ->latest() // Свежие сверху
+            ->get();
+
+        return Inertia::render('MyOrders', [
+            'orders' => $orders
+        ]);
+    }
+    // ====================================
+
     public function enroll(Request $request, Course $course)
     {
         $user = Auth::user();
         
-        // 1. Определяем цену и тариф
         $amount = $course->price;
         $tariffId = null;
 
@@ -34,26 +48,24 @@ class OrderController extends Controller
             return redirect()->back()->with('error', 'Пожалуйста, выберите тариф.');
         }
 
-        // 2. Проверяем дубликаты
+        // Проверяем дубликаты
         $existingOrder = Order::where('user_id', $user->id)
             ->where('course_id', $course->id)
-            ->whereIn('status', ['new', 'paid','processing'])
+            ->whereIn('status', ['new', 'processing', 'paid'])
             ->first();
 
         if ($existingOrder) {
             if ($existingOrder->status === 'paid') {
-                // Если уже куплено - ведем к обучению
                 return redirect()->route('my.learning');
             }
-            
-            // ИСПРАВЛЕНИЕ: Если заказ есть, но не оплачен — ведем на страницу "Уже заказано"
-            return redirect()->route('courses.order_exists', $course->slug);
+            // Если есть неоплаченный - ведем на оплату
+            return redirect()->route('payment.checkout', $existingOrder->id);
         }
 
-        // 3. Создаем заказ
+        // Создаем заказ
         $isFree = $amount === 0;
 
-        Order::create([
+        $order = Order::create([
             'user_id' => $user->id,
             'course_id' => $course->id,
             'tariff_id' => $tariffId,
@@ -68,6 +80,6 @@ class OrderController extends Controller
             return redirect()->route('my.learning')->with('success', 'Вы успешно записались на курс!');
         }
 
-        return redirect()->route('courses.thankyou', $course->slug);
+        return redirect()->route('payment.checkout', $order->id);
     }
 }
