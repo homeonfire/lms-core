@@ -1,37 +1,27 @@
 <x-filament-panels::page>
     <x-filament-panels::form wire:submit="save">
         {{ $this->form }}
-        
         <div class="flex justify-end">
-            <x-filament::button type="submit">
-                Сохранить настройки
-            </x-filament::button>
+            <x-filament::button type="submit">Сохранить настройки</x-filament::button>
         </div>
     </x-filament-panels::form>
 
-    <div class="fi-section rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 mt-6">
-        <h3 class="text-lg font-bold text-gray-950 dark:text-white flex items-center gap-2">
-            <span>⚙️</span> Настройка Webhook (Notification)
-        </h3>
-        
-        <div class="mt-4 space-y-4 text-sm text-gray-600 dark:text-gray-400">
-            <p>Чтобы статус заказа менялся на "Оплачен" автоматически, настройте уведомления в кабинете ЮKassa.</p>
-            
-            <p class="flex items-center gap-2">
-                URL для уведомлений: 
-                <code class="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-primary-600 font-mono select-all cursor-pointer"
-                      onclick="navigator.clipboard.writeText('{{ $webhookUrl }}'); alert('URL скопирован!')">
-                    {{ $webhookUrl }}
-                </code>
-            </p>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+        <!-- ЮКасса Инструкция -->
+        <div class="fi-section rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
+            <h3 class="text-lg font-bold mb-2">Webhook для ЮKassa</h3>
+            <code class="block px-2 py-2 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono select-all break-all">
+                {{ $webhookUrl }}
+            </code>
+        </div>
 
-            <div>
-                <strong>События для подписки:</strong>
-                <ul class="list-disc list-inside mt-2 ml-2 space-y-1">
-                    <li><code>payment.succeeded</code> (Платеж прошел успешно)</li>
-                    <li><code>payment.canceled</code> (Платеж отменен)</li>
-                </ul>
-            </div>
+        <!-- P2P Инструкция -->
+        <div class="fi-section rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
+            <h3 class="text-lg font-bold mb-2">Webhook для ЮMoney P2P</h3>
+            <p class="text-sm text-gray-500 mb-2">Вставьте этот URL в настройках уведомлений кошелька на yoomoney.ru (галочка "Отправлять HTTP-уведомления").</p>
+            <code class="block px-2 py-2 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono select-all break-all">
+                {{ $p2pWebhookUrl }}
+            </code>
         </div>
     </div>
 </x-filament-panels::page>
