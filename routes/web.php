@@ -7,9 +7,8 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 // Главная страница (пока просто редирект на вход)
-Route::get('/', function () {
-    return redirect()->route('login');
-});
+// Главная страница
+Route::get('/', [\App\Http\Controllers\Public\HomeController::class, 'index'])->name('home');
 // === ПУБЛИЧНЫЕ СТРАНИЦЫ ===
 Route::get('/c/{slug}', [\App\Http\Controllers\Public\PublicCourseController::class, 'show'])->name('public.course.show');
 Route::get('/c/{slug}/thank-you', [\App\Http\Controllers\Public\PublicCourseController::class, 'thankYou'])->name('public.course.thankyou');
