@@ -12,7 +12,6 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
-
 class OrderResource extends Resource
 {
     protected static ?string $model = Order::class;
@@ -20,9 +19,8 @@ class OrderResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
     protected static ?string $navigationGroup = 'Продажи';
     protected static ?string $navigationLabel = 'Заказы';
-
     protected static ?string $modelLabel = 'Заказ';
-protected static ?string $pluralModelLabel = 'Заказы';
+    protected static ?string $pluralModelLabel = 'Заказы';
 
     // Бейджик: показываем количество новых заказов
     public static function getNavigationBadge(): ?string
@@ -83,30 +81,19 @@ protected static ?string $pluralModelLabel = 'Заказы';
                                     ->dehydrated()
                                     ->required(),
 
-                                // === НОВОЕ ПОЛЕ: ТАРИФ ===
+                                // === ТАРИФ ===
                                 Forms\Components\Select::make('tariff_id')
                                     ->relationship('tariff', 'name')
                                     ->label('Тариф')
                                     ->placeholder('Без тарифа (Стандарт)')
-                                    ->disabled() // Обычно тариф не меняют после покупки
+                                    ->disabled() 
                                     ->dehydrated(),
-                                // =========================
 
                                 Forms\Components\TextInput::make('amount')
                                     ->label('Сумма (руб)')
                                     ->prefix('₽')
                                     ->numeric()
                                     ->disabled(),
-                                Forms\Components\Section::make('Маркетинг (UTM)')
-                                    ->schema([
-                                        Forms\Components\KeyValue::make('utm_data')
-                                            ->label('Метки')
-                                            ->keyLabel('Параметр')
-                                            ->valueLabel('Значение')
-                                            ->disabled(), // Только чтение
-                                    ])
-                                    ->collapsed() // Свернуть, чтобы не мешало
-                                    ->columnSpan(['lg' => 3]),
                             ])->columns(2),
                     ])
                     ->columnSpan(['lg' => 2]),
@@ -159,20 +146,21 @@ protected static ?string $pluralModelLabel = 'Заказы';
                     ->label('Клиент')
                     ->searchable()
                     ->weight('bold')
-                    ->description(fn (Order $record) => $record->user->email),
+                    // ИСПРАВЛЕНИЕ: Используем ?-> для безопасного доступа, если юзер удален
+                    ->description(fn (Order $record) => $record->user?->email ?? 'Удален'),
 
                 Tables\Columns\TextColumn::make('course.title')
                     ->label('Курс')
                     ->limit(20)
-                    ->tooltip(fn (Order $record) => $record->course->title),
+                    // ИСПРАВЛЕНИЕ: Используем ?-> для безопасного доступа, если курс удален
+                    ->tooltip(fn (Order $record) => $record->course?->title ?? 'Курс удален'),
 
-                // === НОВАЯ КОЛОНКА: ТАРИФ ===
+                // ТАРИФ
                 Tables\Columns\TextColumn::make('tariff.name')
                     ->label('Тариф')
-                    ->badge() // Сделаем красиво в виде бейджика
+                    ->badge() 
                     ->color('gray')
                     ->placeholder('—'),
-                // ============================
 
                 Tables\Columns\TextColumn::make('amount')
                     ->label('Сумма')
