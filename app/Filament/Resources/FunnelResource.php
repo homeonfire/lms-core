@@ -65,8 +65,8 @@ class FunnelResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\ToggledFilter::make('is_active')
-                    ->label('Только активные'),
+                Tables\Filters\TernaryFilter::make('is_active')
+                    ->label('Активность'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
