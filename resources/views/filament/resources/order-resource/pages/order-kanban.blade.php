@@ -75,6 +75,81 @@
         .timeline-item:last-child::after {
             display: none;
         }
+
+        /* Explicit Modal Styling to ensure perfect visibility and premium aesthetics */
+        .custom-modal-backdrop {
+            background-color: rgba(15, 23, 42, 0.65) !important;
+            backdrop-filter: blur(8px) !important;
+            -webkit-backdrop-filter: blur(8px) !important;
+        }
+        .custom-modal-content {
+            background-color: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+        }
+        .dark .custom-modal-content {
+            background-color: #111827 !important;
+            border: 1px solid #1f2937 !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+        }
+        .custom-modal-header {
+            background-color: #f8fafc !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+        }
+        .dark .custom-modal-header {
+            background-color: #1f2937 !important;
+            border-bottom: 1px solid #374151 !important;
+        }
+        .custom-modal-footer {
+            background-color: #f8fafc !important;
+            border-top: 1px solid #e2e8f0 !important;
+        }
+        .dark .custom-modal-footer {
+            background-color: #1f2937 !important;
+            border-top: 1px solid #374151 !important;
+        }
+        .custom-modal-section {
+            background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%) !important;
+            border: 1px solid #e2e8f0 !important;
+        }
+        .dark .custom-modal-section {
+            background: linear-gradient(135deg, #1f2937 0%, #111827 100%) !important;
+            border: 1px solid #374151 !important;
+        }
+        .custom-utm-card {
+            background-color: #ffffff !important;
+            border: 1px solid #e5e7eb !important;
+        }
+        .dark .custom-utm-card {
+            background-color: #111827 !important;
+            border: 1px solid #374151 !important;
+        }
+        .custom-input {
+            background-color: #ffffff !important;
+            border: 1px solid #d1d5db !important;
+            color: #111827 !important;
+        }
+        .dark .custom-input {
+            background-color: #111827 !important;
+            border: 1px solid #374151 !important;
+            color: #f3f4f6 !important;
+        }
+        .custom-cancel-btn {
+            border: 1px solid #d1d5db !important;
+            color: #374151 !important;
+            background-color: #ffffff !important;
+        }
+        .custom-cancel-btn:hover {
+            background-color: #f3f4f6 !important;
+        }
+        .dark .custom-cancel-btn {
+            border: 1px solid #4b5563 !important;
+            color: #e5e7eb !important;
+            background-color: #1f2937 !important;
+        }
+        .dark .custom-cancel-btn:hover {
+            background-color: #374151 !important;
+        }
     </style>
 
     <div class="flex flex-col gap-6">
@@ -242,7 +317,7 @@
             x-transition:leave="ease-in duration-200"
             x-transition:leave-start="opacity-100"
             x-transition:leave-end="opacity-0"
-            class="fixed inset-0 bg-slate-950/60 backdrop-blur-md transition-opacity"
+            class="fixed inset-0 custom-modal-backdrop transition-opacity"
             wire:click="closeOrder"
         ></div>
 
@@ -255,13 +330,13 @@
             x-transition:leave="ease-in duration-200"
             x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
             x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-            class="relative w-full max-w-5xl h-[88vh] bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 flex flex-col overflow-hidden z-10 transition-all"
+            class="relative w-full max-w-5xl h-[88vh] custom-modal-content rounded-2xl flex flex-col overflow-hidden z-10 transition-all"
         >
             <!-- Header -->
-            <div class="px-6 py-4 bg-slate-50 dark:bg-slate-950/30 border-b border-gray-200 dark:border-gray-800/80 flex items-center justify-between">
+            <div class="px-6 py-4 custom-modal-header flex items-center justify-between">
                 <div>
                     <div class="flex items-center gap-3">
-                        <h3 class="text-xl font-extrabold text-gray-950 dark:text-white">
+                        <h3 class="text-xl font-extrabold text-gray-900 dark:text-white">
                             Сделка #{{ $selectedOrderId }}
                         </h3>
                         @if($selectedOrder)
@@ -285,7 +360,7 @@
                 <!-- Left side (2/3 width) - Customer & UTMS & Logs -->
                 <div class="md:col-span-2 flex flex-col gap-6">
                     <!-- Customer Details -->
-                    <div class="bg-gradient-to-br from-slate-50/80 to-white dark:from-slate-950/20 dark:to-slate-900/10 p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 shadow-sm">
+                    <div class="custom-modal-section p-5 rounded-2xl shadow-sm">
                         <h4 class="font-bold text-sm text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                             <span>👤 Данные клиента</span>
                         </h4>
@@ -322,12 +397,12 @@
                     </div>
 
                     <!-- UTM Parameters -->
-                    <div class="bg-gradient-to-br from-slate-50/80 to-white dark:from-slate-950/20 dark:to-slate-900/10 p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 shadow-sm">
+                    <div class="custom-modal-section p-5 rounded-2xl shadow-sm">
                         <h4 class="font-bold text-sm text-gray-900 dark:text-white mb-4">🔗 UTM-метки (Источник трафика)</h4>
                         @if($selectedOrder && !empty($selectedOrder->utm_data))
                             <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
                                 @foreach(['utm_source' => 'Source', 'utm_medium' => 'Medium', 'utm_campaign' => 'Campaign', 'utm_content' => 'Content', 'utm_term' => 'Term'] as $key => $label)
-                                    <div class="p-3 bg-white dark:bg-gray-905 rounded-xl border border-gray-150 dark:border-gray-800 shadow-sm">
+                                    <div class="p-3 custom-utm-card rounded-xl shadow-sm">
                                         <span class="text-[9px] uppercase tracking-wider font-extrabold text-gray-400 block mb-1">{{ $label }}</span>
                                         <span class="text-xs font-bold text-gray-800 dark:text-gray-200 break-all">
                                             {{ $selectedOrder->utm_data[$key] ?? '-' }}
@@ -336,12 +411,12 @@
                                 @endforeach
                             </div>
                         @else
-                            <p class="text-xs text-gray-400 italic">Нет доступных UTM-меток</p>
+                            <p class="text-xs text-gray-400 italic">Нет UTM-меток</p>
                         @endif
                     </div>
 
                     <!-- History log / Timeline -->
-                    <div class="bg-gradient-to-br from-slate-50/80 to-white dark:from-slate-950/20 dark:to-slate-900/10 p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 shadow-sm flex-grow">
+                    <div class="custom-modal-section p-5 rounded-2xl shadow-sm flex-grow">
                         <h4 class="font-bold text-sm text-gray-900 dark:text-white mb-5">📜 Лог истории изменений</h4>
                         @if($selectedOrder && !empty($selectedOrder->history_log))
                             <div class="flex flex-col gap-1 max-h-[220px] overflow-y-auto pr-2">
@@ -361,7 +436,7 @@
                 </div>
 
                 <!-- Right side (1/3 width) - Edit Form & Tags -->
-                <div class="flex flex-col gap-6 border-l border-gray-200 dark:border-gray-800/80 pl-0 md:pl-6">
+                <div class="flex flex-col gap-6 border-l border-gray-200 dark:border-gray-800 pl-0 md:pl-6">
                     <!-- Deal parameters -->
                     <div>
                         <h4 class="font-bold text-sm text-gray-900 dark:text-white mb-4">⚙️ Параметры сделки</h4>
@@ -372,7 +447,7 @@
                                 <input 
                                     type="number" 
                                     wire:model="editingOrderData.amount" 
-                                    class="w-full text-sm rounded-xl border-gray-200 dark:border-gray-750 bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 font-semibold"
+                                    class="w-full text-sm rounded-xl custom-input focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 font-semibold"
                                     step="0.01"
                                     required
                                 />
@@ -383,7 +458,7 @@
                                 <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Ответственный менеджер</label>
                                 <select 
                                     wire:model="editingOrderData.manager_id" 
-                                    class="w-full text-sm rounded-xl border-gray-200 dark:border-gray-750 bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 font-semibold"
+                                    class="w-full text-sm rounded-xl custom-input focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 font-semibold"
                                 >
                                     <option value="">Без менеджера</option>
                                     @foreach($managers as $manager)
@@ -397,7 +472,7 @@
                                 <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Этап воронки</label>
                                 <select 
                                     wire:model="editingOrderData.funnel_stage_id" 
-                                    class="w-full text-sm rounded-xl border-gray-200 dark:border-gray-750 bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 font-semibold"
+                                    class="w-full text-sm rounded-xl custom-input focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 font-semibold"
                                     required
                                 >
                                     @foreach($stages as $stage)
@@ -409,13 +484,13 @@
                     </div>
 
                     <!-- Tagging section -->
-                    <div class="mt-2 border-t border-gray-100 dark:border-gray-800/80 pt-5">
+                    <div class="mt-2 border-t border-gray-200 dark:border-gray-800 pt-5">
                         <h4 class="font-bold text-sm text-gray-900 dark:text-white mb-3">🏷️ Теги сделки</h4>
                         <!-- Tag badges -->
                         <div class="flex flex-wrap gap-1.5 mb-4">
                             @if(!empty($editingOrderData['tags']))
                                 @foreach($editingOrderData['tags'] as $tag)
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50/80 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-100/50 dark:border-indigo-900/50 transition">
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900 transition">
                                         <span>{{ $tag }}</span>
                                         <button 
                                             type="button" 
@@ -438,7 +513,7 @@
                                 wire:model="newTag" 
                                 wire:keydown.enter.prevent="addTag"
                                 placeholder="Новый тег" 
-                                class="flex-grow text-xs rounded-xl border-gray-200 dark:border-gray-750 bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 font-semibold"
+                                class="flex-grow text-xs rounded-xl custom-input focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 font-semibold"
                             />
                             <button 
                                 type="button" 
@@ -453,11 +528,11 @@
             </div>
 
             <!-- Footer -->
-            <div class="px-6 py-4 bg-gray-50 dark:bg-gray-950/30 border-t border-gray-200 dark:border-gray-800/80 flex justify-end gap-3">
+            <div class="px-6 py-4 custom-modal-footer flex justify-end gap-3">
                 <button 
                     type="button" 
                     wire:click="closeOrder" 
-                    class="px-5 py-2 border border-gray-300 dark:border-gray-700 hover:bg-gray-150 dark:hover:bg-gray-800 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-300 transition"
+                    class="px-5 py-2 custom-cancel-btn rounded-xl text-sm font-bold transition"
                 >
                     Отмена
                 </button>
