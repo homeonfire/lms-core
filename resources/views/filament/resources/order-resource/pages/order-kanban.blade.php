@@ -97,24 +97,24 @@
             border-bottom: 1px solid #e2e8f0 !important;
         }
         .dark .custom-modal-header {
-            background-color: #1f2937 !important;
-            border-bottom: 1px solid #374151 !important;
+            background-color: #111827 !important;
+            border-bottom: 1px solid #1f2937 !important;
         }
         .custom-modal-footer {
             background-color: #f8fafc !important;
             border-top: 1px solid #e2e8f0 !important;
         }
         .dark .custom-modal-footer {
-            background-color: #1f2937 !important;
-            border-top: 1px solid #374151 !important;
+            background-color: #111827 !important;
+            border-top: 1px solid #1f2937 !important;
         }
         .custom-modal-section {
             background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%) !important;
             border: 1px solid #e2e8f0 !important;
         }
         .dark .custom-modal-section {
-            background: linear-gradient(135deg, #1f2937 0%, #111827 100%) !important;
-            border: 1px solid #374151 !important;
+            background: linear-gradient(135deg, rgba(31, 41, 55, 0.2) 0%, rgba(17, 24, 39, 0.4) 100%) !important;
+            border: 1px solid #1f2937 !important;
         }
         .custom-utm-card {
             background-color: #ffffff !important;
@@ -122,7 +122,7 @@
         }
         .dark .custom-utm-card {
             background-color: #111827 !important;
-            border: 1px solid #374151 !important;
+            border: 1px solid #1f2937 !important;
         }
         .custom-input {
             background-color: #ffffff !important;
@@ -131,24 +131,90 @@
         }
         .dark .custom-input {
             background-color: #111827 !important;
-            border: 1px solid #374151 !important;
+            border: 1px solid #1f2937 !important;
             color: #f3f4f6 !important;
         }
-        .custom-cancel-btn {
-            border: 1px solid #d1d5db !important;
-            color: #374151 !important;
+        
+        /* Premium Buttons explicitly colored to prevent default style overrides */
+        .custom-btn-primary {
+            background-color: #4f46e5 !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            border-radius: 0.75rem !important;
+            padding: 0.625rem 1.5rem !important;
+            font-size: 0.875rem !important;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            border: none !important;
+            cursor: pointer !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2), 0 2px 4px -1px rgba(79, 70, 229, 0.1) !important;
+        }
+        .custom-btn-primary:hover {
+            background-color: #4338ca !important;
+            box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3), 0 4px 6px -2px rgba(79, 70, 229, 0.15) !important;
+            transform: translateY(-1px) !important;
+        }
+        .custom-btn-primary:active {
+            transform: translateY(0) !important;
+        }
+        .custom-btn-primary-sm {
+            background-color: #4f46e5 !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            border-radius: 0.75rem !important;
+            padding: 0.5rem 1.25rem !important;
+            font-size: 0.75rem !important;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            border: none !important;
+            cursor: pointer !important;
+            box-shadow: 0 2px 4px rgba(79, 70, 229, 0.1) !important;
+        }
+        .custom-btn-primary-sm:hover {
+            background-color: #4338ca !important;
+        }
+        .custom-btn-secondary {
             background-color: #ffffff !important;
+            color: #374151 !important;
+            font-weight: 700 !important;
+            border-radius: 0.75rem !important;
+            padding: 0.625rem 1.5rem !important;
+            font-size: 0.875rem !important;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            border: 1px solid #d1d5db !important;
+            cursor: pointer !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
         }
-        .custom-cancel-btn:hover {
+        .custom-btn-secondary:hover {
             background-color: #f3f4f6 !important;
+            color: #111827 !important;
         }
-        .dark .custom-cancel-btn {
-            border: 1px solid #4b5563 !important;
-            color: #e5e7eb !important;
+        .dark .custom-btn-secondary {
             background-color: #1f2937 !important;
+            color: #e5e7eb !important;
+            border: 1px solid #4b5563 !important;
         }
-        .dark .custom-cancel-btn:hover {
+        .dark .custom-btn-secondary:hover {
             background-color: #374151 !important;
+            color: #ffffff !important;
+        }
+
+        /* Timeline and scrollbar styling */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 5px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: rgba(148, 163, 184, 0.3);
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(99, 102, 241, 0.5);
         }
     </style>
 
@@ -333,25 +399,29 @@
             class="relative w-full max-w-5xl h-[88vh] custom-modal-content rounded-2xl flex flex-col overflow-hidden z-10 transition-all"
         >
             <!-- Header -->
-            <div class="px-6 py-4 custom-modal-header flex items-center justify-between">
+            <div class="px-6 py-5 custom-modal-header flex items-center justify-between">
                 <div>
                     <div class="flex items-center gap-3">
-                        <h3 class="text-xl font-extrabold text-gray-900 dark:text-white">
+                        <h3 class="text-xl font-black text-gray-900 dark:text-white">
                             Сделка #{{ $selectedOrderId }}
                         </h3>
                         @if($selectedOrder)
-                            <span class="px-3 py-0.5 text-xs font-bold rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-100/50 dark:border-indigo-900/50">
+                            <span class="px-3 py-1 text-xs font-extrabold rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-100/50 dark:border-indigo-900/50">
                                 {{ $selectedOrder->course?->title }}
                             </span>
                         @endif
                     </div>
-                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-1.5 font-medium">Создан: {{ $selectedOrder?->created_at?->format('d.m.Y H:i') ?? '-' }}</p>
+                    <p class="text-[10px] uppercase tracking-wider font-extrabold text-gray-400 dark:text-gray-500 mt-2">
+                        Создан: <span class="text-gray-600 dark:text-gray-300 font-bold">{{ $selectedOrder?->created_at?->format('d.m.Y H:i') ?? '-' }}</span>
+                    </p>
                 </div>
                 <button 
                     wire:click="closeOrder" 
                     class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition"
                 >
-                    <x-filament::icon icon="heroicon-o-x-mark" class="h-6 w-6" />
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
                 </button>
             </div>
 
@@ -360,105 +430,133 @@
                 <!-- Left side (2/3 width) - Customer & UTMS & Logs -->
                 <div class="md:col-span-2 flex flex-col gap-6">
                     <!-- Customer Details -->
-                    <div class="custom-modal-section p-5 rounded-2xl shadow-sm">
-                        <h4 class="font-bold text-sm text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                            <span>👤 Данные клиента</span>
-                        </h4>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                          <div>
-                              <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">ФИО</span>
-                              <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                  {{ $selectedOrder?->user?->name ?? 'Удаленный клиент' }}
-                              </span>
-                          </div>
-                          <div>
-                              <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Email</span>
-                              @if($selectedOrder?->user?->email)
-                                  <a href="mailto:{{ $selectedOrder->user->email }}" class="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
-                                      {{ $selectedOrder->user->email }}
-                                  </a>
-                              @else
-                                  <span class="text-sm text-gray-400 font-semibold">-</span>
-                              @endif
-                          </div>
-                          <div>
-                              <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Телефон</span>
-                              <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                  {{ $selectedOrder?->user?->phone ?? $selectedOrder?->phone ?? '-' }}
-                              </span>
-                          </div>
-                          <div>
-                              <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Тариф курса</span>
-                              <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                  {{ $selectedOrder?->tariff?->name ?? 'Без тарифа' }}
-                              </span>
-                          </div>
+                    <div class="custom-modal-section p-6 rounded-2xl shadow-sm">
+                        <div class="flex items-center gap-2.5 mb-5 pb-3 border-b border-gray-100 dark:border-gray-800/80">
+                            <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                            </svg>
+                            <h4 class="font-extrabold text-sm text-gray-900 dark:text-white uppercase tracking-wider">Данные клиента</h4>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
+                            <div class="flex flex-col gap-1 p-3 bg-gray-50/50 dark:bg-gray-950/20 rounded-xl border border-gray-100/50 dark:border-gray-800/30">
+                                <span class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">ФИО</span>
+                                <span class="text-sm font-bold text-gray-800 dark:text-gray-200">
+                                    {{ $selectedOrder?->user?->name ?? 'Удаленный клиент' }}
+                                </span>
+                            </div>
+                            <div class="flex flex-col gap-1 p-3 bg-gray-50/50 dark:bg-gray-950/20 rounded-xl border border-gray-100/50 dark:border-gray-800/30">
+                                <span class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Email</span>
+                                @if($selectedOrder?->user?->email)
+                                    <a href="mailto:{{ $selectedOrder->user->email }}" class="text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:underline truncate">
+                                        {{ $selectedOrder->user->email }}
+                                    </a>
+                                @else
+                                    <span class="text-sm text-gray-400 font-bold">-</span>
+                                @endif
+                            </div>
+                            <div class="flex flex-col gap-1 p-3 bg-gray-50/50 dark:bg-gray-950/20 rounded-xl border border-gray-100/50 dark:border-gray-800/30">
+                                <span class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Телефон</span>
+                                <span class="text-sm font-bold text-gray-800 dark:text-gray-200">
+                                    {{ $selectedOrder?->user?->phone ?? $selectedOrder?->phone ?? '-' }}
+                                </span>
+                            </div>
+                            <div class="flex flex-col gap-1 p-3 bg-gray-50/50 dark:bg-gray-950/20 rounded-xl border border-gray-100/50 dark:border-gray-800/30">
+                                <span class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Тариф курса</span>
+                                <span class="text-sm font-bold text-gray-800 dark:text-gray-200">
+                                    {{ $selectedOrder?->tariff?->name ?? 'Без тарифа' }}
+                                </span>
+                            </div>
                         </div>
                     </div>
 
                     <!-- UTM Parameters -->
-                    <div class="custom-modal-section p-5 rounded-2xl shadow-sm">
-                        <h4 class="font-bold text-sm text-gray-900 dark:text-white mb-4">🔗 UTM-метки (Источник трафика)</h4>
+                    <div class="custom-modal-section p-6 rounded-2xl shadow-sm">
+                        <div class="flex items-center gap-2.5 mb-5 pb-3 border-b border-gray-100 dark:border-gray-800/80">
+                            <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                            </svg>
+                            <h4 class="font-extrabold text-sm text-gray-900 dark:text-white uppercase tracking-wider">UTM-метки (Источник трафика)</h4>
+                        </div>
                         @if($selectedOrder && !empty($selectedOrder->utm_data))
                             <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
                                 @foreach(['utm_source' => 'Source', 'utm_medium' => 'Medium', 'utm_campaign' => 'Campaign', 'utm_content' => 'Content', 'utm_term' => 'Term'] as $key => $label)
-                                    <div class="p-3 custom-utm-card rounded-xl shadow-sm">
-                                        <span class="text-[9px] uppercase tracking-wider font-extrabold text-gray-400 block mb-1">{{ $label }}</span>
-                                        <span class="text-xs font-bold text-gray-800 dark:text-gray-200 break-all">
+                                    <div class="p-3 custom-utm-card rounded-xl shadow-sm flex flex-col gap-1">
+                                        <span class="text-[9px] uppercase tracking-wider font-extrabold text-gray-400 dark:text-gray-500">{{ $label }}</span>
+                                        <span class="text-xs font-bold text-gray-800 dark:text-gray-200 break-all leading-tight">
                                             {{ $selectedOrder->utm_data[$key] ?? '-' }}
                                         </span>
                                     </div>
                                 @endforeach
                             </div>
                         @else
-                            <p class="text-xs text-gray-400 italic">Нет UTM-меток</p>
+                            <div class="flex items-center justify-center p-4 bg-gray-50/50 dark:bg-gray-950/20 rounded-xl border border-dashed border-gray-200 dark:border-gray-800 text-center text-gray-400 dark:text-gray-500 text-xs font-bold gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
+                                Нет UTM-меток
+                            </div>
                         @endif
                     </div>
 
                     <!-- History log / Timeline -->
-                    <div class="custom-modal-section p-5 rounded-2xl shadow-sm flex-grow">
-                        <h4 class="font-bold text-sm text-gray-900 dark:text-white mb-5">📜 Лог истории изменений</h4>
+                    <div class="custom-modal-section p-6 rounded-2xl shadow-sm flex-grow">
+                        <div class="flex items-center gap-2.5 mb-5 pb-3 border-b border-gray-100 dark:border-gray-800/80">
+                            <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <h4 class="font-extrabold text-sm text-gray-900 dark:text-white uppercase tracking-wider">Лог истории изменений</h4>
+                        </div>
                         @if($selectedOrder && !empty($selectedOrder->history_log))
-                            <div class="flex flex-col gap-1 max-h-[220px] overflow-y-auto pr-2">
+                            <div class="flex flex-col gap-1 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
                                 @foreach($selectedOrder->history_log as $log)
-                                    <div class="timeline-item text-xs">
-                                        <span class="text-gray-400 font-bold block mb-0.5">{{ $log['date'] ?? '-' }}</span>
-                                        <span class="font-semibold text-gray-700 dark:text-gray-300">
+                                    <div class="timeline-item text-xs relative">
+                                        <span class="text-[10px] text-indigo-500 dark:text-indigo-400 font-extrabold block mb-0.5">{{ $log['date'] ?? '-' }}</span>
+                                        <span class="font-bold text-gray-700 dark:text-gray-300 leading-normal">
                                             {{ $log['message'] ?? '-' }}
                                         </span>
                                     </div>
                                 @endforeach
                             </div>
                         @else
-                            <p class="text-xs text-gray-400 italic">История изменений пуста</p>
+                            <div class="flex items-center justify-center p-8 bg-gray-50/50 dark:bg-gray-950/20 rounded-xl border border-dashed border-gray-200 dark:border-gray-800 text-center text-gray-400 dark:text-gray-500 text-xs font-bold gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                История изменений пуста
+                            </div>
                         @endif
                     </div>
                 </div>
 
                 <!-- Right side (1/3 width) - Edit Form & Tags -->
-                <div class="flex flex-col gap-6 border-l border-gray-200 dark:border-gray-800 pl-0 md:pl-6">
+                <div class="flex flex-col gap-6 border-l border-gray-205 dark:border-gray-800 pl-0 md:pl-6">
                     <!-- Deal parameters -->
                     <div>
-                        <h4 class="font-bold text-sm text-gray-900 dark:text-white mb-4">⚙️ Параметры сделки</h4>
-                        <div class="flex flex-col gap-4">
+                        <div class="flex items-center gap-2 mb-5 pb-3 border-b border-gray-100 dark:border-gray-800">
+                            <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+                            </svg>
+                            <h4 class="font-extrabold text-sm text-gray-900 dark:text-white uppercase tracking-wider">Параметры сделки</h4>
+                        </div>
+                        <div class="flex flex-col gap-5">
                             <!-- Amount -->
-                            <div>
-                                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Сумма заказа (₽)</label>
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Сумма заказа (₽)</label>
                                 <input 
                                     type="number" 
                                     wire:model="editingOrderData.amount" 
-                                    class="w-full text-sm rounded-xl custom-input focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 font-semibold"
+                                    class="w-full text-sm rounded-xl custom-input focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 font-bold py-2.5 px-4"
                                     step="0.01"
                                     required
                                 />
                             </div>
 
                             <!-- Manager -->
-                            <div>
-                                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Ответственный менеджер</label>
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Ответственный менеджер</label>
                                 <select 
                                     wire:model="editingOrderData.manager_id" 
-                                    class="w-full text-sm rounded-xl custom-input focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 font-semibold"
+                                    class="w-full text-sm rounded-xl custom-input focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 font-bold py-2.5 px-4"
                                 >
                                     <option value="">Без менеджера</option>
                                     @foreach($managers as $manager)
@@ -468,11 +566,11 @@
                             </div>
 
                             <!-- Stage -->
-                            <div>
-                                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Этап воронки</label>
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Этап воронки</label>
                                 <select 
                                     wire:model="editingOrderData.funnel_stage_id" 
-                                    class="w-full text-sm rounded-xl custom-input focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 font-semibold"
+                                    class="w-full text-sm rounded-xl custom-input focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 font-bold py-2.5 px-4"
                                     required
                                 >
                                     @foreach($stages as $stage)
@@ -485,9 +583,14 @@
 
                     <!-- Tagging section -->
                     <div class="mt-2 border-t border-gray-200 dark:border-gray-800 pt-5">
-                        <h4 class="font-bold text-sm text-gray-900 dark:text-white mb-3">🏷️ Теги сделки</h4>
+                        <div class="flex items-center gap-2 mb-4">
+                            <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            <h4 class="font-extrabold text-sm text-gray-900 dark:text-white uppercase tracking-wider">Теги сделки</h4>
+                        </div>
                         <!-- Tag badges -->
-                        <div class="flex flex-wrap gap-1.5 mb-4">
+                        <div class="flex flex-wrap gap-1.5 mb-4" style="min-height: 28px;">
                             @if(!empty($editingOrderData['tags']))
                                 @foreach($editingOrderData['tags'] as $tag)
                                     <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900 transition">
@@ -502,7 +605,7 @@
                                     </span>
                                 @endforeach
                             @else
-                                <span class="text-xs text-gray-400 italic">Теги не добавлены</span>
+                                <span class="text-xs text-gray-400 dark:text-gray-500 italic">Теги не добавлены</span>
                             @endif
                         </div>
 
@@ -513,12 +616,12 @@
                                 wire:model="newTag" 
                                 wire:keydown.enter.prevent="addTag"
                                 placeholder="Новый тег" 
-                                class="flex-grow text-xs rounded-xl custom-input focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 font-semibold"
+                                class="flex-grow text-sm rounded-xl custom-input focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 font-semibold py-2 px-3"
                             />
                             <button 
                                 type="button" 
                                 wire:click="addTag"
-                                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
+                                class="custom-btn-primary-sm"
                             >
                                 Добавить
                             </button>
@@ -532,14 +635,14 @@
                 <button 
                     type="button" 
                     wire:click="closeOrder" 
-                    class="px-5 py-2 custom-cancel-btn rounded-xl text-sm font-bold transition"
+                    class="custom-btn-secondary"
                 >
                     Отмена
                 </button>
                 <button 
                     type="button" 
                     wire:click="saveOrderDetails" 
-                    class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition shadow-md"
+                    class="custom-btn-primary"
                 >
                     Сохранить
                 </button>
