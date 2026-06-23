@@ -73,13 +73,34 @@ class HomeworkController extends Controller
             ]
         );
 
-        // --- ДОБАВЛЯЕМ ОТПРАВКУ ---
-        // Ищем админа (в будущем здесь будет логика поиска куратора курса)
-        $admin = \App\Models\User::find(1); 
-        if ($admin) {
-            $admin->notify(new \App\Notifications\NewSubmissionCreated($submission));
+        // --- ОТПРАВКА УВЕДОМЛЕНИЙ ПРЕПОДАВАТЕЛЮ И КУРАТОРАМ ---
+        $course = $homework->lesson->module->course;
+        $notified = false;
+
+        if ($course) {
+            // 1. Уведомляем кураторов курса
+            if ($course->curators->isNotEmpty()) {
+                foreach ($course->curators as $curator) {
+                    $curator->notify(new \App\Notifications\NewSubmissionCreated($submission));
+                    $notified = true;
+                }
+            }
+
+            // 2. Уведомляем преподавателя курса
+            if ($course->teacher) {
+                $course->teacher->notify(new \App\Notifications\NewSubmissionCreated($submission));
+                $notified = true;
+            }
         }
-        // --------------------------
+
+        // 3. Резервный вариант: если никого не уведомили, шлем первому Super Admin
+        if (!$notified) {
+            $admin = \App\Models\User::role('Super Admin')->first() ?: \App\Models\User::find(1);
+            if ($admin) {
+                $admin->notify(new \App\Notifications\NewSubmissionCreated($submission));
+            }
+        }
+        // -----------------------------------------------------
 
         // 4. Возвращаем назад с успехом
         return redirect()->back()->with('success', 'Ответ успешно отправлен!');

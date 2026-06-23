@@ -68,7 +68,7 @@ const submitOrder = () => {
 // --- Helper Functions ---
 const formatPrice = (price) => {
     if (price === 0) return 'Бесплатно';
-    return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(price);
+    return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(price / 100);
 };
 
 const getDisplayPrice = () => {

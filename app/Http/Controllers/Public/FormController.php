@@ -84,8 +84,8 @@ class FormController extends Controller
                 $user->assignRole('Student');
                 $isNewUser = true;
                 
-                // Тут можно отправить письмо с паролем
-                $user->notify(new \App\Notifications\WelcomeStudent()); // Или специальное письмо с паролем
+                // Отправляем письмо с паролем
+                $user->notify(new \App\Notifications\NewUserRegisteredWithPassword($password));
                 Auth::login($user);
             }
         }

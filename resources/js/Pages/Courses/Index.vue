@@ -14,11 +14,15 @@ const formatCurrency = (value) => {
         style: 'currency',
         currency: 'RUB',
         minimumFractionDigits: 0
-    }).format(value);
+    }).format(value / 100);
 };
 
 // Умная функция для вывода цены на карточке
 const getPriceLabel = (course) => {
+    if (course.is_purchased) {
+        return 'Куплен';
+    }
+
     // 1. Если у курса есть тарифы (пришло поле tariffs_min_price)
     if (course.tariffs_min_price !== null && course.tariffs_min_price !== undefined) {
         return 'от ' + formatCurrency(course.tariffs_min_price);
@@ -106,7 +110,14 @@ const handleSearch = () => {
                         </div>
 
                         <!-- Бейдж цены -->
-                        <div class="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-gray-900 shadow-sm">
+                        <div 
+                            :class="[
+                                'absolute top-4 right-4 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold shadow-sm transition-colors duration-200',
+                                course.is_purchased 
+                                    ? 'bg-emerald-100/90 text-emerald-800 border border-emerald-200/50' 
+                                    : 'bg-white/90 text-gray-900'
+                            ]"
+                        >
                             <!-- ИСПОЛЬЗУЕМ НОВУЮ ФУНКЦИЮ -->
                             {{ getPriceLabel(course) }}
                         </div>

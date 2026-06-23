@@ -2,7 +2,7 @@
 import { Link } from '@inertiajs/vue3';
 defineProps({ data: Object });
 
-const formatPrice = (val) => new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(val);
+const formatPrice = (val) => new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(val / 100);
 const getPriceLabel = (c) => c.tariffs_min_price ? 'от ' + formatPrice(c.tariffs_min_price) : (c.price === 0 ? 'Бесплатно' : formatPrice(c.price));
 </script>
 

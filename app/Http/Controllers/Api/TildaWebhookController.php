@@ -54,8 +54,8 @@ class TildaWebhookController extends Controller
             
             $user->assignRole('Student');
             
-            // Тут можно отправить письмо с паролем:
-            // $user->notify(new NewUserPasswordNotification($password));
+            // Отправляем письмо с паролем
+            $user->notify(new \App\Notifications\NewUserRegisteredWithPassword($password));
         }
 
         // 4. Создание заказа
@@ -80,12 +80,7 @@ class TildaWebhookController extends Controller
             'user_id' => $user->id,
             'course_id' => $courseId,
             'tariff_id' => $tariffId,
-            'amount' => (int) ($amount * 100), // Переводим в копейки? У нас же рубли. 
-            // ВАЖНО: Мы перешли на рубли в базе, значит пишем как есть:
-            // 'amount' => (int) $amount, 
-            // НО: Если вдруг логика "копейки" где-то осталась, проверяй. 
-            // Сейчас у нас в базе рубли, так что:
-            'amount' => (int) $amount,
+            'amount' => (int) ($amount * 100), // Сохраняем в копейках согласно структуре базы данных
             'status' => 'paid', // Сразу оплачено!
             'paid_at' => now(),
             'history_log' => [

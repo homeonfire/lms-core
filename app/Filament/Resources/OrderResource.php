@@ -93,7 +93,8 @@ class OrderResource extends Resource
                                     ->label('Сумма (руб)')
                                     ->prefix('₽')
                                     ->numeric()
-                                    ->disabled(),
+                                    ->disabled()
+                                    ->formatStateUsing(fn ($state) => $state ? $state / 100 : 0),
                             ])->columns(2),
                     ])
                     ->columnSpan(['lg' => 2]),
@@ -116,7 +117,9 @@ class OrderResource extends Resource
                                     ->native(false),
 
                                 Forms\Components\Select::make('manager_id')
-                                    ->relationship('manager', 'name')
+                                    ->relationship('manager', 'name', function ($query) {
+                                        return $query->role(['Super Admin', 'Manager']);
+                                    })
                                     ->label('Менеджер')
                                     ->searchable()
                                     ->preload(),
@@ -164,7 +167,7 @@ class OrderResource extends Resource
 
                 Tables\Columns\TextColumn::make('amount')
                     ->label('Сумма')
-                    ->money('rub')
+                    ->money('rub', divideBy: 100)
                     ->sortable(),
 
                 Tables\Columns\BadgeColumn::make('status')

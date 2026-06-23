@@ -28,6 +28,18 @@ class CourseController extends Controller
 
         $courses = $query->latest()->get();
 
+        $paidCourseIds = [];
+        if (Auth::check()) {
+            $paidCourseIds = Order::where('user_id', Auth::id())
+                ->where('status', 'paid')
+                ->pluck('course_id')
+                ->toArray();
+        }
+
+        $courses->each(function ($course) use ($paidCourseIds) {
+            $course->is_purchased = in_array($course->id, $paidCourseIds);
+        });
+
         return Inertia::render('Courses/Index', [
             'courses' => $courses,
             'filters' => $request->only(['search']),

@@ -26,7 +26,9 @@ class TariffsRelationManager extends RelationManager
                     ->label('Цена (руб)')
                     ->numeric()
                     ->prefix('₽')
-                    ->required(),
+                    ->required()
+                    ->formatStateUsing(fn ($state) => $state ? $state / 100 : null)
+                    ->dehydrateStateUsing(fn ($state) => $state ? (int)($state * 100) : null),
 
                 // === НОВЫЕ ПОЛЯ ===
                 Forms\Components\Section::make('Telegram для этого тарифа')
@@ -47,7 +49,7 @@ class TariffsRelationManager extends RelationManager
             ->recordTitleAttribute('name')
             ->columns([
                 Tables\Columns\TextColumn::make('name')->label('Название'),
-                Tables\Columns\TextColumn::make('price')->money('rub')->label('Цена'),
+                Tables\Columns\TextColumn::make('price')->money('rub', divideBy: 100)->label('Цена'),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make(),

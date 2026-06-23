@@ -25,7 +25,7 @@ class CourseResource extends Resource
 
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {
-        $query = parent::getEloquentQuery();
+        $query = parent::getEloquentQuery()->withMin('tariffs', 'price');
 
         if (auth()->user()->hasRole('Super Admin')) {
             return $query;
@@ -123,10 +123,12 @@ class CourseResource extends Resource
                         Forms\Components\Section::make('Стоимость')
                             ->schema([
                                 Forms\Components\TextInput::make('price')
-                                    ->label('Базовая цена')
+                                    ->label('Базовая цена (руб)')
                                     ->numeric()
                                     ->prefix('₽')
                                     ->default(0)
+                                    ->formatStateUsing(fn ($state) => $state ? $state / 100 : 0)
+                                    ->dehydrateStateUsing(fn ($state) => $state ? (int)($state * 100) : 0)
                                     ->helperText('Если 0 — бесплатно (или действуют тарифы).'),
                             ]),
 
@@ -198,7 +200,9 @@ class CourseResource extends Resource
 
                 Tables\Columns\TextColumn::make('price')
                     ->label('Цена')
-                    ->money('rub')
+                    ->money('rub', divideBy: 100)
+                    ->state(fn (Course $record) => $record->tariffs_min_price !== null ? $record->tariffs_min_price : $record->price)
+                    ->prefix(fn (Course $record) => $record->tariffs_min_price !== null ? 'от ' : '')
                     ->sortable(),
 
                 // Используем ToggleColumn для быстрого переключения

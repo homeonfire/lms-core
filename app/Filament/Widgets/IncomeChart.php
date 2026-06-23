@@ -11,8 +11,8 @@ class IncomeChart extends ChartWidget
 {
     protected static ?string $heading = 'Динамика доходов (за год)';
     
-    // Сортировка: пусть график будет под карточками
-    protected static ?int $sort = 2;
+    // Сортировка: пусть график будет под карточками и быстрым доступом
+    protected static ?int $sort = 3;
 
     protected function getData(): array
     {
@@ -40,7 +40,7 @@ class IncomeChart extends ChartWidget
                 [
                     'label' => 'Доход (в рублях)',
                     // Делим на 100, чтобы получить рубли, а не копейки
-                    'data' => $data->map(fn (TrendValue $value) => $value->aggregate),
+                    'data' => $data->map(fn (TrendValue $value) => $value->aggregate / 100),
                     'borderColor' => '#6366f1', // Indigo цвет
                     'fill' => 'start',
                     'backgroundColor' => 'rgba(99, 102, 241, 0.1)',

@@ -82,5 +82,9 @@ class User extends Authenticatable implements FilamentUser
         return $this->belongsToMany(Course::class, 'course_curator', 'user_id', 'course_id');
     }
 
-    
+    // Заполненные анкеты
+    public function formSubmissions()
+    {
+        return $this->hasMany(FormSubmission::class, 'user_id');
+    }
 }

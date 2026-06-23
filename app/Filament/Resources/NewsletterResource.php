@@ -44,24 +44,6 @@ protected static ?string $pluralModelLabel = 'Рассылки';
                 // ПРАВАЯ КОЛОНКА: Настройки
                 Forms\Components\Section::make('Настройки отправки')
                     ->schema([
-                        // Фильтр: Выбор курсов
-                        Forms\Components\Select::make('recipients_filter.course_id')
-                            ->label('Только студентам курсов')
-                            ->options(Course::all()->pluck('title', 'id'))
-                            ->multiple()
-                            ->preload()
-                            ->searchable()
-                            ->helperText('Оставьте пустым, чтобы отправить всем подписчикам.'),
-
-                        // Фильтр: Выбор ролей
-                        Forms\Components\Select::make('recipients_filter.roles')
-                            ->label('Только ролям')
-                            ->options([
-                                'Student' => 'Студенты',
-                                'Teacher' => 'Учителя',
-                            ])
-                            ->multiple(),
-
                         // Дата отправки
                         Forms\Components\DateTimePicker::make('scheduled_at')
                             ->label('Запланировать отправку')
@@ -71,7 +53,110 @@ protected static ?string $pluralModelLabel = 'Рассылки';
                         Forms\Components\Placeholder::make('status')
                             ->label('Текущий статус')
                             ->content(fn (?Newsletter $record) => $record ? $record->status : 'Черновик'),
+
+                        Forms\Components\Toggle::make('recipients_filter.ignore_marketing')
+                            ->label('Игнорировать согласие на маркетинг')
+                            ->helperText('Включите для отправки важных системных уведомлений (согласие пользователей на рассылку будет проигнорировано).')
+                            ->default(false)
+                            ->live(),
+
+                        Forms\Components\Placeholder::make('recipients_count')
+                            ->label('Получателей к отправке')
+                            ->content(function (Forms\Get $get) {
+                                $filters = $get('recipients_filter') ?? [];
+                                $count = self::getFilteredUsersCount($filters);
+                                return self::pluralize($count);
+                            }),
                     ])->columnSpan(1),
+
+                // НИЖНЯЯ СЕКЦИЯ: Сегментация получателей
+                Forms\Components\Section::make('Сегментация получателей')
+                    ->description('Настройте правила включения и исключения пользователей для рассылки. Если правила не заданы, письмо получат все пользователи, согласившиеся на рассылку.')
+                    ->schema([
+                        Forms\Components\Tabs::make('FilterTabs')
+                            ->tabs([
+                                Forms\Components\Tabs\Tab::make('Отправить группам (Включение)')
+                                    ->icon('heroicon-o-check-circle')
+                                    ->schema([
+                                        Forms\Components\Grid::make(2)
+                                            ->schema([
+                                                Forms\Components\Select::make('recipients_filter.include_courses')
+                                                    ->label('Студенты курсов')
+                                                    ->options(fn () => \App\Models\Course::all()->pluck('title', 'id'))
+                                                    ->multiple()
+                                                    ->preload()
+                                                    ->searchable()
+                                                    ->live(),
+
+                                                Forms\Components\Select::make('recipients_filter.include_tariffs')
+                                                    ->label('Студенты тарифов')
+                                                    ->options(fn () => \App\Models\Tariff::with('course')->get()->mapWithKeys(function ($t) {
+                                                        return [$t->id => ($t->course?->title ?? 'Курс') . ' - ' . $t->name];
+                                                    }))
+                                                    ->multiple()
+                                                    ->preload()
+                                                    ->searchable()
+                                                    ->live(),
+
+                                                Forms\Components\Select::make('recipients_filter.include_roles')
+                                                    ->label('Пользователи с ролями')
+                                                    ->options(fn () => \Spatie\Permission\Models\Role::all()->pluck('name', 'name'))
+                                                    ->multiple()
+                                                    ->preload()
+                                                    ->live(),
+
+                                                Forms\Components\Select::make('recipients_filter.include_forms')
+                                                    ->label('Заполнившие анкеты')
+                                                    ->options(fn () => \App\Models\Form::all()->pluck('title', 'id'))
+                                                    ->multiple()
+                                                    ->preload()
+                                                    ->searchable()
+                                                    ->live(),
+                                            ]),
+                                    ]),
+
+                                Forms\Components\Tabs\Tab::make('Исключить группы (Исключение)')
+                                    ->icon('heroicon-o-x-circle')
+                                    ->schema([
+                                        Forms\Components\Grid::make(2)
+                                            ->schema([
+                                                Forms\Components\Select::make('recipients_filter.exclude_courses')
+                                                    ->label('Исключить студентов курсов')
+                                                    ->options(fn () => \App\Models\Course::all()->pluck('title', 'id'))
+                                                    ->multiple()
+                                                    ->preload()
+                                                    ->searchable()
+                                                    ->live(),
+
+                                                Forms\Components\Select::make('recipients_filter.exclude_tariffs')
+                                                    ->label('Исключить студентов тарифов')
+                                                    ->options(fn () => \App\Models\Tariff::with('course')->get()->mapWithKeys(function ($t) {
+                                                        return [$t->id => ($t->course?->title ?? 'Курс') . ' - ' . $t->name];
+                                                    }))
+                                                    ->multiple()
+                                                    ->preload()
+                                                    ->searchable()
+                                                    ->live(),
+
+                                                Forms\Components\Select::make('recipients_filter.exclude_roles')
+                                                    ->label('Исключить пользователей с ролями')
+                                                    ->options(fn () => \Spatie\Permission\Models\Role::all()->pluck('name', 'name'))
+                                                    ->multiple()
+                                                    ->preload()
+                                                    ->live(),
+
+                                                Forms\Components\Select::make('recipients_filter.exclude_forms')
+                                                    ->label('Исключить заполнивших анкеты')
+                                                    ->options(fn () => \App\Models\Form::all()->pluck('title', 'id'))
+                                                    ->multiple()
+                                                    ->preload()
+                                                    ->searchable()
+                                                    ->live(),
+                                            ]),
+                                    ]),
+                            ]),
+                    ])
+                    ->columnSpanFull(),
             ])->columns(3);
     }
 
@@ -139,5 +224,99 @@ protected static ?string $pluralModelLabel = 'Рассылки';
             'create' => Pages\CreateNewsletter::route('/create'),
             'edit' => Pages\EditNewsletter::route('/{record}/edit'),
         ];
+    }
+
+    public static function getFilteredUsersCount(?array $filters): int
+    {
+        $query = \App\Models\User::query()
+            ->whereNotNull('email');
+
+        if (!$filters) {
+            return $query->whereNotNull('accepted_marketing_at')->count();
+        }
+
+        if (empty($filters['ignore_marketing']) || !$filters['ignore_marketing']) {
+            $query->whereNotNull('accepted_marketing_at');
+        }
+
+        // === ВКЛЮЧЕНИЯ (INCLUDES) ===
+
+        // 1. Курсы и тарифы
+        if (!empty($filters['include_courses']) || !empty($filters['include_tariffs'])) {
+            $query->where(function ($q) use ($filters) {
+                if (!empty($filters['include_courses'])) {
+                    $q->whereHas('orders', function ($oq) use ($filters) {
+                        $oq->whereIn('course_id', $filters['include_courses'])
+                           ->where('status', 'paid');
+                    });
+                }
+                if (!empty($filters['include_tariffs'])) {
+                    if (!empty($filters['include_courses'])) {
+                        $q->orWhereHas('orders', function ($oq) use ($filters) {
+                            $oq->whereIn('tariff_id', $filters['include_tariffs'])
+                               ->where('status', 'paid');
+                        });
+                    } else {
+                        $q->whereHas('orders', function ($oq) use ($filters) {
+                            $oq->whereIn('tariff_id', $filters['include_tariffs'])
+                               ->where('status', 'paid');
+                        });
+                    }
+                }
+            });
+        }
+
+        // 2. Роли
+        if (!empty($filters['include_roles'])) {
+            $query->role($filters['include_roles']);
+        }
+
+        // 3. Анкеты
+        if (!empty($filters['include_forms'])) {
+            $query->whereHas('formSubmissions', function ($q) use ($filters) {
+                $q->whereIn('form_id', $filters['include_forms']);
+            });
+        }
+
+        // === ИСКЛЮЧЕНИЯ (EXCLUDES) ===
+
+        // 1. Исключить курсы
+        if (!empty($filters['exclude_courses'])) {
+            $query->whereDoesntHave('orders', function ($q) use ($filters) {
+                $q->whereIn('course_id', $filters['exclude_courses'])
+                  ->where('status', 'paid');
+            });
+        }
+
+        // 2. Исключить тарифы
+        if (!empty($filters['exclude_tariffs'])) {
+            $query->whereDoesntHave('orders', function ($q) use ($filters) {
+                $q->whereIn('tariff_id', $filters['exclude_tariffs'])
+                  ->where('status', 'paid');
+            });
+        }
+
+        // 3. Исключить роли
+        if (!empty($filters['exclude_roles'])) {
+            $query->whereDoesntHave('roles', function ($q) use ($filters) {
+                $q->whereIn('name', $filters['exclude_roles']);
+            });
+        }
+
+        // 4. Исключить анкеты
+        if (!empty($filters['exclude_forms'])) {
+            $query->whereDoesntHave('formSubmissions', function ($q) use ($filters) {
+                $q->whereIn('form_id', $filters['exclude_forms']);
+            });
+        }
+
+        return $query->count();
+    }
+
+    private static function pluralize(int $count): string
+    {
+        $cases = [2, 0, 1, 1, 1, 2];
+        $titles = ['пользователь', 'пользователя', 'пользователей'];
+        return $count . ' ' . $titles[($count % 100 > 4 && $count % 100 < 20) ? 2 : $cases[min($count % 10, 5)]];
     }
 }

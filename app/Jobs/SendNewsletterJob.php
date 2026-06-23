@@ -31,21 +31,82 @@ class SendNewsletterJob implements ShouldQueue
         $filters = $this->newsletter->recipients_filter ?? [];
         
         $query = User::query()
-            ->whereNotNull('email')
-            // ВАЖНО: Шлем только тем, кто согласился на маркетинг!
-            ->whereNotNull('accepted_marketing_at'); 
+            ->whereNotNull('email'); 
 
-        // Фильтр: Купил определенный курс
-        if (!empty($filters['course_id'])) {
-            $query->whereHas('orders', function ($q) use ($filters) {
-                $q->whereIn('course_id', $filters['course_id'])
+        // ВАЖНО: Шлем только тем, кто согласился на маркетинг, если не включен обход
+        if (empty($filters['ignore_marketing']) || !$filters['ignore_marketing']) {
+            $query->whereNotNull('accepted_marketing_at');
+        } 
+
+        // === ВКЛЮЧЕНИЯ (INCLUDES) ===
+
+        // 1. Курсы и тарифы
+        if (!empty($filters['include_courses']) || !empty($filters['include_tariffs'])) {
+            $query->where(function ($q) use ($filters) {
+                if (!empty($filters['include_courses'])) {
+                    $q->whereHas('orders', function ($oq) use ($filters) {
+                        $oq->whereIn('course_id', $filters['include_courses'])
+                           ->where('status', 'paid');
+                    });
+                }
+                if (!empty($filters['include_tariffs'])) {
+                    if (!empty($filters['include_courses'])) {
+                        $q->orWhereHas('orders', function ($oq) use ($filters) {
+                            $oq->whereIn('tariff_id', $filters['include_tariffs'])
+                               ->where('status', 'paid');
+                        });
+                    } else {
+                        $q->whereHas('orders', function ($oq) use ($filters) {
+                            $oq->whereIn('tariff_id', $filters['include_tariffs'])
+                               ->where('status', 'paid');
+                        });
+                    }
+                }
+            });
+        }
+
+        // 2. Роли
+        if (!empty($filters['include_roles'])) {
+            $query->role($filters['include_roles']);
+        }
+
+        // 3. Анкеты
+        if (!empty($filters['include_forms'])) {
+            $query->whereHas('formSubmissions', function ($q) use ($filters) {
+                $q->whereIn('form_id', $filters['include_forms']);
+            });
+        }
+
+        // === ИСКЛЮЧЕНИЯ (EXCLUDES) ===
+
+        // 1. Исключить курсы
+        if (!empty($filters['exclude_courses'])) {
+            $query->whereDoesntHave('orders', function ($q) use ($filters) {
+                $q->whereIn('course_id', $filters['exclude_courses'])
                   ->where('status', 'paid');
             });
         }
 
-        // Фильтр: Имеет определенную роль (например, только Студенты)
-        if (!empty($filters['roles'])) {
-            $query->role($filters['roles']);
+        // 2. Исключить тарифы
+        if (!empty($filters['exclude_tariffs'])) {
+            $query->whereDoesntHave('orders', function ($q) use ($filters) {
+                $q->whereIn('tariff_id', $filters['exclude_tariffs'])
+                  ->where('status', 'paid');
+            });
+        }
+
+        // 3. Исключить роли
+        if (!empty($filters['exclude_roles'])) {
+            $query->whereDoesntHave('roles', function ($q) use ($filters) {
+                $q->whereIn('name', $filters['exclude_roles']);
+            });
+        }
+
+        // 4. Исключить анкеты
+        if (!empty($filters['exclude_forms'])) {
+            $query->whereDoesntHave('formSubmissions', function ($q) use ($filters) {
+                $q->whereIn('form_id', $filters['exclude_forms']);
+            });
         }
 
         // 3. Отправляем письма (chunks для экономии памяти)

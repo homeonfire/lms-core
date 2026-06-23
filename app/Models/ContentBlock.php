@@ -13,9 +13,22 @@ class ContentBlock extends Model
         'is_visible' => 'boolean',
     ];
 
+    protected $attributes = [
+        'content' => '{}',
+    ];
+
     public function lesson()
     {
         return $this->belongsTo(Lesson::class);
+    }
+
+    protected static function booted()
+    {
+        static::saving(function ($model) {
+            if (is_null($model->content)) {
+                $model->content = [];
+            }
+        });
     }
 
     public function testResults()
