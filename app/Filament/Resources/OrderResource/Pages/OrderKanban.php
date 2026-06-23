@@ -18,6 +18,11 @@ class OrderKanban extends Page
 
     public ?int $funnelId = null;
 
+    public function getMaxContentWidth(): string
+    {
+        return 'full';
+    }
+
     public function mount()
     {
         $activeFunnel = Funnel::where('is_active', true)->first() ?? Funnel::first();

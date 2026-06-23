@@ -54,15 +54,15 @@
                         <div 
                             class="flex-grow p-3 flex flex-col gap-3 overflow-y-auto"
                             style="min-height: 450px;"
-                            ondragover="event.preventDefault(); this.classList.add('bg-indigo-50/50', 'dark:bg-indigo-950/20')"
-                            ondragleave="this.classList.remove('bg-indigo-50/50', 'dark:bg-indigo-950/20')"
-                            ondrop="this.classList.remove('bg-indigo-50/50', 'dark:bg-indigo-950/20'); const orderId = event.dataTransfer.getData('text/plain'); $wire.updateOrderStage(orderId, '{{ $stage->id }}')"
+                            x-on:dragover.prevent="$el.classList.add('bg-indigo-50/50', 'dark:bg-indigo-950/20')"
+                            x-on:dragleave="$el.classList.remove('bg-indigo-50/50', 'dark:bg-indigo-950/20')"
+                            x-on:drop="$el.classList.remove('bg-indigo-50/50', 'dark:bg-indigo-950/20'); const orderId = event.dataTransfer.getData('text/plain'); $wire.updateOrderStage(orderId, '{{ $stage->id }}')"
                         >
                             @foreach($stage->orders as $order)
                                 <div 
                                     class="p-4 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-850 rounded-lg shadow-sm hover:shadow-md hover:border-indigo-400 dark:hover:border-indigo-600 transition duration-200 cursor-grab active:cursor-grabbing relative group"
                                     draggable="true"
-                                    ondragstart="event.dataTransfer.setData('text/plain', '{{ $order->id }}')"
+                                    x-on:dragstart="event.dataTransfer.setData('text/plain', '{{ $order->id }}')"
                                 >
                                     <!-- Order ID & Edit Link -->
                                     <div class="flex justify-between items-center mb-2">
