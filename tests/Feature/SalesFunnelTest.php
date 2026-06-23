@@ -12,6 +12,16 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->artisan('db:seed', ['--class' => 'RolesSeeder']);
+
+    $this->adminUser = User::create([
+        'name' => 'Admin User',
+        'email' => 'admin-' . uniqid() . '@example.com',
+        'password' => Hash::make('password'),
+    ]);
+    $this->adminUser->assignRole('Super Admin');
+
+    \Filament\Facades\Filament::setCurrentPanel(\Filament\Facades\Filament::getPanel('admin'));
+    $this->actingAs($this->adminUser);
 });
 
 it('automatically generates the 5 default stages on funnel creation', function () {
@@ -164,4 +174,131 @@ it('automatically moves the order to won stage when status is set to paid', func
     $order->update(['status' => 'paid']);
 
     expect($order->fresh()->funnel_stage_id)->toBe($wonStage->id);
+});
+
+it('opens details modal and loads order data', function () {
+    $funnel = Funnel::create(['name' => 'Test Funnel', 'is_active' => true]);
+    
+    $teacher = User::create([
+        'name' => 'Teacher',
+        'email' => 'teacher-' . uniqid() . '@example.com',
+        'password' => Hash::make('password'),
+    ]);
+
+    $course = Course::create([
+        'teacher_id' => $teacher->id,
+        'title' => 'Test Course',
+        'slug' => 'test-course-' . uniqid(),
+        'price' => 1000,
+        'is_published' => true,
+    ]);
+
+    $user = User::create([
+        'name' => 'Student',
+        'email' => 'student-' . uniqid() . '@example.com',
+        'password' => Hash::make('password'),
+    ]);
+
+    $order = Order::create([
+        'user_id' => $user->id,
+        'course_id' => $course->id,
+        'amount' => 1000,
+        'status' => 'new',
+    ]);
+
+    \Livewire\Livewire::test(App\Filament\Resources\OrderResource\Pages\OrderKanban::class)
+        ->call('selectOrder', $order->id)
+        ->assertSet('selectedOrderId', $order->id)
+        ->assertSet('editingOrderData.amount', 10.00)
+        ->assertSet('editingOrderData.funnel_stage_id', $order->funnel_stage_id);
+});
+
+it('can manage tags on a deal', function () {
+    $funnel = Funnel::create(['name' => 'Test Funnel', 'is_active' => true]);
+    
+    $teacher = User::create([
+        'name' => 'Teacher',
+        'email' => 'teacher-' . uniqid() . '@example.com',
+        'password' => Hash::make('password'),
+    ]);
+
+    $course = Course::create([
+        'teacher_id' => $teacher->id,
+        'title' => 'Test Course',
+        'slug' => 'test-course-' . uniqid(),
+        'price' => 1000,
+        'is_published' => true,
+    ]);
+
+    $user = User::create([
+        'name' => 'Student',
+        'email' => 'student-' . uniqid() . '@example.com',
+        'password' => Hash::make('password'),
+    ]);
+
+    $order = Order::create([
+        'user_id' => $user->id,
+        'course_id' => $course->id,
+        'amount' => 1000,
+        'status' => 'new',
+    ]);
+
+    \Illuminate\Support\Facades\DB::enableQueryLog();
+
+    \Livewire\Livewire::test(App\Filament\Resources\OrderResource\Pages\OrderKanban::class)
+        ->call('selectOrder', $order->id)
+        ->set('newTag', 'горячий')
+        ->call('addTag')
+        ->assertSet('editingOrderData.tags', ['горячий']);
+
+    expect($order->fresh()->tags)->toBe(['горячий']);
+
+    \Livewire\Livewire::test(App\Filament\Resources\OrderResource\Pages\OrderKanban::class)
+        ->call('selectOrder', $order->id)
+        ->call('removeTag', 'горячий')
+        ->assertSet('editingOrderData.tags', []);
+
+    expect($order->fresh()->tags)->toBe([]);
+});
+
+it('saves order details correctly from modal', function () {
+    $funnel = Funnel::create(['name' => 'Test Funnel', 'is_active' => true]);
+    $nextStage = $funnel->stages()->skip(1)->first();
+    
+    $teacher = User::create([
+        'name' => 'Teacher',
+        'email' => 'teacher-' . uniqid() . '@example.com',
+        'password' => Hash::make('password'),
+    ]);
+
+    $course = Course::create([
+        'teacher_id' => $teacher->id,
+        'title' => 'Test Course',
+        'slug' => 'test-course-' . uniqid(),
+        'price' => 1000,
+        'is_published' => true,
+    ]);
+
+    $user = User::create([
+        'name' => 'Student',
+        'email' => 'student-' . uniqid() . '@example.com',
+        'password' => Hash::make('password'),
+    ]);
+
+    $order = Order::create([
+        'user_id' => $user->id,
+        'course_id' => $course->id,
+        'amount' => 1000,
+        'status' => 'new',
+    ]);
+
+    \Livewire\Livewire::test(App\Filament\Resources\OrderResource\Pages\OrderKanban::class)
+        ->call('selectOrder', $order->id)
+        ->set('editingOrderData.amount', 25.50)
+        ->set('editingOrderData.funnel_stage_id', $nextStage->id)
+        ->call('saveOrderDetails')
+        ->assertSet('selectedOrderId', null);
+
+    expect($order->fresh()->amount)->toBe(2550);
+    expect($order->fresh()->funnel_stage_id)->toBe($nextStage->id);
 });

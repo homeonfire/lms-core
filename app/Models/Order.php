@@ -13,6 +13,7 @@ class Order extends Model
         'paid_at' => 'datetime',
         'utm_data' => 'array',
         'funnel_stage_id' => 'integer',
+        'tags' => 'array',
     ];
 
     public function user()
