@@ -1,5 +1,9 @@
 <?php
 
+beforeEach(function () {
+    $this->artisan('db:seed', ['--class' => 'RolesSeeder']);
+});
+
 test('registration screen can be rendered', function () {
     $response = $this->get('/register');
 
@@ -12,6 +16,7 @@ test('new users can register', function () {
         'email' => 'test@example.com',
         'password' => 'password',
         'password_confirmation' => 'password',
+        'agree_policy' => true,
     ]);
 
     $this->assertAuthenticated();

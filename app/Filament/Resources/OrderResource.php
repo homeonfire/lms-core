@@ -116,6 +116,15 @@ class OrderResource extends Resource
                                     ->required()
                                     ->native(false),
 
+                                Forms\Components\Select::make('funnel_stage_id')
+                                        ->relationship('funnelStage', 'name', function ($query) {
+                                            return $query->with('funnel')->orderBy('sort_order');
+                                        })
+                                        ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->funnel->name} — {$record->name}")
+                                        ->label('Этап воронки')
+                                        ->searchable()
+                                        ->preload(),
+
                                 Forms\Components\Select::make('manager_id')
                                     ->relationship('manager', 'name', function ($query) {
                                         return $query->role(['Super Admin', 'Manager']);
@@ -196,12 +205,21 @@ class OrderResource extends Resource
                         'cancelled' => 'Отмена',
                     ]),
             ])
+            ->headerActions([
+                Tables\Actions\Action::make('kanban')
+                    ->label('Канбан-доска')
+                    ->icon('heroicon-o-view-columns')
+                    ->url(fn () => static::getUrl('kanban'))
+                    ->color('primary'),
+            ])
             ->actions([
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make()
-                    ->visible(fn () => auth()->user()->hasRole('Super Admin')),
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->visible(fn () => auth()->user()->hasRole('Super Admin')),
+                ]),
             ]);
     }
 
@@ -218,6 +236,7 @@ class OrderResource extends Resource
             'index' => Pages\ListOrders::route('/'),
             'create' => Pages\CreateOrder::route('/create'),
             'edit' => Pages\EditOrder::route('/{record}/edit'),
+            'kanban' => Pages\OrderKanban::route('/kanban'),
         ];
     }
 
